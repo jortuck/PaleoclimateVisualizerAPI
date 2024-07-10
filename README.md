@@ -1,2 +1,2 @@
 # About
-This pPython API uses https://fastapi.tiangolo.com/.
+This Python API uses https://fastapi.tiangolo.com/.
