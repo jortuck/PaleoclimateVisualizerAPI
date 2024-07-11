@@ -11,6 +11,7 @@ variables = ["psl", "tas", "us"]
 
 datasets = {
     "cesm": {
+        "name": "iCESM Last Millennium Ensemble",
         "variables": {
             "psl": xr.open_dataset("./data/cesm/psl.nc"),
             "tas": xr.open_dataset("./data/cesm/tas.nc"),
@@ -18,7 +19,7 @@ datasets = {
         }
     },
     "hadcm3": {
-
+        "name": "HadCM3 Last Millennium Ensemble",
         "variables": {
             "psl": xr.open_dataset("./data/hadcm3/psl.nc"),
             "tas": xr.open_dataset("./data/hadcm3/tas.nc"),
@@ -26,6 +27,7 @@ datasets = {
         }
     },
     "lens": {
+        "name": "CESM1 Large Ensemble",
         "variables": {
             "psl": xr.open_dataset("./data/lens/psl.nc"),
             "tas": xr.open_dataset("./data/lens/tas.nc"),
@@ -33,6 +35,7 @@ datasets = {
         }
     },
     "pace": {
+        "name": "CESM1 Pacific Pacemaker Ensemble",
         "variables": {
             "psl": xr.open_dataset("./data/pace/psl.nc"),
             "tas": xr.open_dataset("./data/pace/tas.nc"),
@@ -73,6 +76,7 @@ async def root():
 
 trends = {}
 
+
 # returns the trends as a raw json string
 def calculateTrend(reconstruction: str, variable: str):
     dataset = datasets[reconstruction]["variables"][variable]
@@ -86,12 +90,14 @@ def calculateTrend(reconstruction: str, variable: str):
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return df.to_json(orient='records')
 
+
 # calculates trends for each data set and stores them in trends
 for reconstruction in datasets.keys():
     for variable in list(datasets[reconstruction]["variables"].keys()):
         key = reconstruction + variable
         trends[key] = calculateTrend(reconstruction, variable)
 print("Finished Calculating Trends")
+
 
 # returns the json string of the precacluated trend
 @app.get("/trends/{reconstruction}/{variable}")
@@ -118,7 +124,7 @@ async def values(reconstruction: str, variable: str, year: int):
     return df.to_dict(orient='records')
 
 
-# Assumes lon is -180-180
+# Assumes lon is -180-180, returns a time series for a specific reconstruction
 @app.get("/timeseries/{reconstruction}/{variable}/{lat}/{lon}")
 async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
     if (not list(datasets.keys()).__contains__(reconstruction) or not list(
@@ -131,3 +137,18 @@ async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
     return {"time": np.ndarray.tolist(data.variables["time"].data),
             "values": np.ndarray.tolist(data.variables[variable].data)
             }
+
+
+# Assumes lon is -180-180, returns a time series for all reconstructions
+@app.get("/timeseries/{variable}/{lat}/{lon}")
+async def timeseries(variable: str, lat: int, lon: int):
+    result = []
+    for k in datasets.keys():
+        lon = (lon + 180) % 360
+        dataset = datasets[k]["variables"][variable]
+        data = dataset.sel(lat=lat, lon=lon, member=0)
+        result.append({
+            "name": datasets[k]["name"],
+            "data": np.ndarray.tolist(data.variables[variable].data),
+        })
+    return {"values": result}
