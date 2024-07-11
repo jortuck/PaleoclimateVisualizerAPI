@@ -72,12 +72,8 @@ async def root():
     return {"reconstructions": sets}
 
 
-# pre-calculate trends because it's an expensive operation and they dont change
 
-trends = {}
-
-
-# returns the trends as a raw json string
+@app.get("/trends/{reconstruction}/{variable}")
 def calculateTrend(reconstruction: str, variable: str):
     dataset = datasets[reconstruction]["variables"][variable]
     variable = dataset[variable]
@@ -88,24 +84,8 @@ def calculateTrend(reconstruction: str, variable: str):
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    return df.to_json(orient='records')
+    return df.to_dict(orient='records')
 
-
-# calculates trends for each data set and stores them in trends
-for reconstruction in datasets.keys():
-    for variable in list(datasets[reconstruction]["variables"].keys()):
-        key = reconstruction + variable
-        trends[key] = calculateTrend(reconstruction, variable)
-print("Finished Calculating Trends")
-
-
-# returns the json string of the precacluated trend
-@app.get("/trends/{reconstruction}/{variable}")
-async def getTrend(reconstruction: str, variable: str):
-    if (not list(datasets.keys()).__contains__(reconstruction) or not list(
-            datasets[reconstruction]["variables"].keys()).__contains__(variable)):
-        raise HTTPException(status_code=404, detail="Invalid dataset selection")
-    return Response(content=trends[reconstruction + variable], media_type="application/json")
 
 
 @app.get("/values/{reconstruction}/{variable}/{year}")
