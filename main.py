@@ -102,8 +102,6 @@ def calculateTrend(reconstruction: str, rvariable: str):
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    print(str(variable))
-    print(variableColorMaps.get(str(variable)))
     return {"min": np.min(df["value"]), "max": np.max(df["value"]),
             "colorMap": generateColorAxis(variableColorMaps.get(rvariable)),
             "values": df.to_dict(orient='records')}
