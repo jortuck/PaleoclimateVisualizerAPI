@@ -5,9 +5,28 @@ import pandas as pd
 import xarray as xr
 import numpy as np
 import json
+from matplotlib import cm
 
-reconstructions = ["cesm", "hadcm3", "lens", "pace"]
-variables = ["psl", "tas", "us"]
+variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "viridis"}
+
+
+def get_colormap_colors(colormap, num_colors=256):
+    cmap = cm.get_cmap(colormap, num_colors)
+    colors = [cmap(i) for i in range(cmap.N)]
+    stops = np.linspace(0, 1, num_colors)
+    stop_color_pairs = list(zip(stops, colors))
+    return stop_color_pairs
+
+
+def generateColorAxis(colormap_name: str) -> list:
+    result = list()
+    stop_color_values = get_colormap_colors(colormap_name)
+    for stop, color in stop_color_values:
+        str_color = "rgba(" + str(int(color[0] * 255)) + "," + str(int(color[1] * 255)) + "," + str(
+            int(color[2] * 255)) + ",0.9)"
+        result.append([stop, str_color])
+    return result
+
 
 datasets = {
     "cesm": {
@@ -72,11 +91,10 @@ async def root():
     return {"reconstructions": sets}
 
 
-
-@app.get("/trends/{reconstruction}/{variable}")
-def calculateTrend(reconstruction: str, variable: str):
-    dataset = datasets[reconstruction]["variables"][variable]
-    variable = dataset[variable]
+@app.get("/trends/{reconstruction}/{rvariable}")
+def calculateTrend(reconstruction: str, rvariable: str):
+    dataset = datasets[reconstruction]["variables"][rvariable]
+    variable = dataset[rvariable]
     trends = variable.polyfit(dim='time', deg=1)
     slope = trends.sel(
         degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
@@ -84,8 +102,11 @@ def calculateTrend(reconstruction: str, variable: str):
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    return df.to_dict(orient='records')
-
+    print(str(variable))
+    print(variableColorMaps.get(str(variable)))
+    return {"min": np.min(df["value"]), "max": np.max(df["value"]),
+            "colorMap": generateColorAxis(variableColorMaps.get(rvariable)),
+            "values": df.to_dict(orient='records')}
 
 
 @app.get("/values/{reconstruction}/{variable}/{year}")
@@ -101,7 +122,10 @@ async def values(reconstruction: str, variable: str, year: int):
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
     df.rename(columns={variable: 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    return df.to_dict(orient='records')
+    return {"min": np.min(df["value"]),
+            "max": np.max(df["value"]),
+            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
+            "values": df.to_dict(orient='records')}
 
 
 # Assumes lon is -180-180, returns a time series for a specific reconstruction
