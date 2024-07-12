@@ -104,7 +104,10 @@ def calculateTrend(reconstruction: str, rvariable: str):
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return {"min": np.min(df["value"]), "max": np.max(df["value"]),
             "colorMap": generateColorAxis(variableColorMaps.get(rvariable)),
-            "values": df.to_dict(orient='records')}
+            "lats": list(df['lat']),
+            "lons":  list(df['lon']),
+            "values": list(df['value'])}
+
 
 
 @app.get("/values/{reconstruction}/{variable}/{year}")
@@ -123,7 +126,9 @@ async def values(reconstruction: str, variable: str, year: int):
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
-            "values": df.to_dict(orient='records')}
+            "lats": list(df['lat']),
+            "lons":list(df["lon"]),
+            "values":list(df["value"])}
 
 
 # Assumes lon is -180-180, returns a time series for a specific reconstruction
