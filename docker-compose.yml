@@ -9,5 +9,7 @@ services:
       - pvapi
     restart: unless-stopped
     container_name: pvapi
+    build:
+      dockerfile: "./Dockerfile"
     ports:
       - "8005:80"
