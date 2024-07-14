@@ -68,6 +68,7 @@ app = FastAPI()
 # add origins for cors
 origins = [
     "http://localhost:5173",
+    "https://pv.jortuck.com"
 ]
 
 app.add_middleware(

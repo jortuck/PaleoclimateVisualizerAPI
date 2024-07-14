@@ -1,0 +1,13 @@
+version: '3.9'
+networks:
+  pvapi:
+
+services:
+  pvapi:
+    image: pvapi
+    networks:
+      - pvapi
+    restart: unless-stopped
+    container_name: pvapi
+    ports:
+      - "8005:80"
