@@ -8,6 +8,32 @@ import json
 from matplotlib import cm
 
 variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "viridis"}
+varaibles = [
+    {
+        "variable": "psl",
+        "colorMap": "RdBu_r",
+        "name": "Mean Sea Level Pressure Anomaly",
+        "nameShort": "SLP",
+        "trendUnit": "hPa/century",
+        "annualUnit": "Pa"
+    },
+    {
+        "variable": "us",
+        "colorMap": "PuOr_r",
+        "name": "Near Surface Zonal Wind Speed Anomaly",
+        "nameShort": "US",
+        "trendUnit": "m/s/year",
+        "annualUnit": "m/s"
+    },
+    {
+        "variable": "tas",
+        "colorMap": "viridis",
+        "name": "Near Surface Air Temperature Anomaly",
+        "nameShort": "TAS",
+        "trendUnit": "K/year",
+        "annualUnit": "K"
+    },
+]
 
 
 def get_colormap_colors(colormap, num_colors=256):
@@ -31,6 +57,7 @@ def generateColorAxis(colormap_name: str) -> list:
 datasets = {
     "cesm": {
         "name": "iCESM Last Millennium Ensemble",
+        "nameShort": "CESM LM",
         "variables": {
             "psl": xr.open_dataset("./data/cesm/psl.nc"),
             "tas": xr.open_dataset("./data/cesm/tas.nc"),
@@ -39,6 +66,7 @@ datasets = {
     },
     "hadcm3": {
         "name": "HadCM3 Last Millennium Ensemble",
+        "nameShort": "HadCM3 LM",
         "variables": {
             "psl": xr.open_dataset("./data/hadcm3/psl.nc"),
             "tas": xr.open_dataset("./data/hadcm3/tas.nc"),
@@ -47,6 +75,7 @@ datasets = {
     },
     "lens": {
         "name": "CESM1 Large Ensemble",
+        "nameShort": "LENS",
         "variables": {
             "psl": xr.open_dataset("./data/lens/psl.nc"),
             "tas": xr.open_dataset("./data/lens/tas.nc"),
@@ -55,6 +84,7 @@ datasets = {
     },
     "pace": {
         "name": "CESM1 Pacific Pacemaker Ensemble",
+        "nameShort": "PACE",
         "variables": {
             "psl": xr.open_dataset("./data/pace/psl.nc"),
             "tas": xr.open_dataset("./data/pace/tas.nc"),
@@ -85,16 +115,24 @@ app.add_middleware(
 async def root():
     sets = []
     for key in datasets.keys():
-        dictionary = {str(key): {
+        dictionary = {
+            "reconstruction": str(key),
+            "name": datasets[key]["name"],
+            "nameShort": datasets[key]["nameShort"],
             "variables": list(datasets[key]["variables"].keys())
-        }}
+        }
         sets.append(dictionary)
-    return {"reconstructions": sets}
+    vars = {}
+    # for var in varaibles:
+    #     vars[var["variable"]] = var
+    return {"reconstructions": sets,"variables": varaibles}
 
 
 @app.get("/trends/{reconstruction}/{rvariable}")
-def calculateTrend(reconstruction: str, rvariable: str):
+def calculateTrend(reconstruction: str, rvariable: str, response: Response):
+    #response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
     dataset = datasets[reconstruction]["variables"][rvariable]
+
     variable = dataset[rvariable]
     trends = variable.polyfit(dim='time', deg=1)
     slope = trends.sel(
@@ -103,12 +141,13 @@ def calculateTrend(reconstruction: str, rvariable: str):
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    return {"min": np.min(df["value"]), "max": np.max(df["value"]),
+    return {"min": np.min(df["value"]),
+            "max": np.max(df["value"]),
+            "name" : datasets[reconstruction]["nameShort"]+" Reconstruction",
             "colorMap": generateColorAxis(variableColorMaps.get(rvariable)),
             "lats": list(df['lat']),
-            "lons":  list(df['lon']),
+            "lons": list(df['lon']),
             "values": list(df['value'])}
-
 
 
 @app.get("/values/{reconstruction}/{variable}/{year}")
@@ -126,10 +165,11 @@ async def values(reconstruction: str, variable: str, year: int):
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
+            "name" : datasets[reconstruction]["nameShort"]+" Reconstruction "+str(year),
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
             "lats": list(df['lat']),
-            "lons":list(df["lon"]),
-            "values":list(df["value"])}
+            "lons": list(df["lon"]),
+            "values": list(df["value"])}
 
 
 # Assumes lon is -180-180, returns a time series for a specific reconstruction
