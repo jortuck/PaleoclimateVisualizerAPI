@@ -43,7 +43,9 @@ variables = {
         },
 }
 
-def absMinimum(x,y):
+# Takes an x and y value, find the one with the largest absolute value, and returns that value
+# floored.
+def absFloorMinimum(x,y):
     x = math.fabs(x)
     y = math.fabs(y)
     return math.floor(math.fabs(x if x > y else y))
@@ -159,7 +161,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["value"] = df["value"] * variables[variable]["multiplier"]
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    bound = absMinimum(np.min(df["value"]),np.max(df["value"]))
+    bound = absFloorMinimum(np.min(df["value"]),np.max(df["value"]))
     return {"min": -bound,
             "max": bound,
             "name": datasets[reconstruction][
