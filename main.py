@@ -46,7 +46,7 @@ variables = {
 def absMinimum(x,y):
     x = math.fabs(x)
     y = math.fabs(y)
-    return math.fabs(x if x > y else y)
+    return math.floor(math.fabs(x if x > y else y))
 
 def get_colormap_colors(colormap, num_colors=256):
     cmap = cm.get_cmap(colormap, num_colors)
