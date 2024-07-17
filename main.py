@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Response, Query, Path
 from typing import Annotated
+import math
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
@@ -9,33 +10,43 @@ import json
 from matplotlib import cm
 
 variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "PiYG_r"}
-varaibles = [
-    {
-        "variable": "psl",
-        "colorMap": "RdBu_r",
-        "name": "Mean Sea Level Pressure Anomaly",
-        "nameShort": "SLP",
-        "trendUnit": "hPa/century",
-        "annualUnit": "Pa"
-    },
-    {
-        "variable": "us",
-        "colorMap": "PuOr_r",
-        "name": "Near Surface Zonal Wind Speed Anomaly",
-        "nameShort": "US",
-        "trendUnit": "m/s/year",
-        "annualUnit": "m/s"
-    },
-    {
-        "variable": "tas",
-        "colorMap": "PiYG_r",
-        "name": "Near Surface Air Temperature Anomaly",
-        "nameShort": "TAS",
-        "trendUnit": "K/year",
-        "annualUnit": "K"
-    },
-]
+variables = {
+    "psl":
+        {
+            "variable": "psl",
+            "colorMap": "RdBu_r",
+            "name": "Mean Sea Level Pressure Anomaly",
+            "nameShort": "SLP",
+            "multiplier": 1,
+            "trendUnit": "hPa/century",
+            "annualUnit": "Pa"
+        },
+    "us":
+        {
+            "variable": "us",
+            "colorMap": "PuOr_r",
+            "name": "Near Surface Zonal Wind Speed Anomaly",
+            "nameShort": "US",
+            "multiplier": 100,
+            "trendUnit": "m/s/century",
+            "annualUnit": "m/s"
+        },
+    "tas":
+        {
+            "variable": "tas",
+            "colorMap": "PiYG_r",
+            "name": "Near Surface Air Temperature Anomaly",
+            "nameShort": "TAS",
+            "multiplier": 100,
+            "trendUnit": "K/century",
+            "annualUnit": "K"
+        },
+}
 
+def absMinimum(x,y):
+    x = math.fabs(x)
+    y = math.fabs(y)
+    return math.fabs(x if x > y else y)
 
 def get_colormap_colors(colormap, num_colors=256):
     cmap = cm.get_cmap(colormap, num_colors)
@@ -123,10 +134,10 @@ async def root():
             "variables": list(datasets[key]["variables"].keys())
         }
         sets.append(dictionary)
-    vars = {}
-    # for var in varaibles:
-    #     vars[var["variable"]] = var
-    return {"reconstructions": sets, "variables": varaibles}
+    variablesArray = []
+    for var in variables.keys():
+        variablesArray.append(variables[var])
+    return {"reconstructions": sets, "variables": variablesArray}
 
 
 @app.get("/trends/{reconstruction}/{variable}")
@@ -146,10 +157,11 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
+    df["value"] = df["value"] * variables[variable]["multiplier"]
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-
-    return {"min": np.min(df["value"]),
-            "max": np.max(df["value"]),
+    bound = absMinimum(np.min(df["value"]),np.max(df["value"]))
+    return {"min": -bound,
+            "max": bound,
             "name": datasets[reconstruction][
                         "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
@@ -199,7 +211,8 @@ async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
 
 # Assumes lon is -180-180, returns a time series for all reconstructions
 @app.get("/timeseries/{variable}/{lat}/{lon}")
-async def timeseries(variable: str, lat: Annotated[int, Path(le=90,ge=-90)], lon: Annotated[int, Path(le=180,ge=-180)]):
+async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
+                     lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
     for k in datasets.keys():
         lon = (lon + 180) % 360
