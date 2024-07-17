@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Query, Path
+from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import pandas as pd
@@ -7,7 +8,7 @@ import numpy as np
 import json
 from matplotlib import cm
 
-variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "viridis"}
+variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "PiYG_r"}
 varaibles = [
     {
         "variable": "psl",
@@ -27,7 +28,7 @@ varaibles = [
     },
     {
         "variable": "tas",
-        "colorMap": "viridis",
+        "colorMap": "PiYG_r",
         "name": "Near Surface Air Temperature Anomaly",
         "nameShort": "TAS",
         "trendUnit": "K/year",
@@ -125,26 +126,33 @@ async def root():
     vars = {}
     # for var in varaibles:
     #     vars[var["variable"]] = var
-    return {"reconstructions": sets,"variables": varaibles}
+    return {"reconstructions": sets, "variables": varaibles}
 
 
-@app.get("/trends/{reconstruction}/{rvariable}")
-def calculateTrend(reconstruction: str, rvariable: str, response: Response):
-    #response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
-    dataset = datasets[reconstruction]["variables"][rvariable]
+@app.get("/trends/{reconstruction}/{variable}")
+def calculateTrend(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
+                   endYear: int = 2005):
+    # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
+    dataset = datasets[reconstruction]["variables"][variable]
 
-    variable = dataset[rvariable]
-    trends = variable.polyfit(dim='time', deg=1)
+    data = dataset[variable]
+
+    data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
+                                                                  drop=True)
+
+    trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
         degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
     slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
+
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
-            "name" : datasets[reconstruction]["nameShort"]+" Reconstruction",
-            "colorMap": generateColorAxis(variableColorMaps.get(rvariable)),
+            "name": datasets[reconstruction][
+                        "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
+            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
             "lats": list(df['lat']),
             "lons": list(df['lon']),
             "values": list(df['value'])}
@@ -165,7 +173,7 @@ async def values(reconstruction: str, variable: str, year: int):
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
-            "name" : datasets[reconstruction]["nameShort"]+" Reconstruction "+str(year),
+            "name": datasets[reconstruction]["nameShort"] + " Reconstruction " + str(year),
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
             "lats": list(df['lat']),
             "lons": list(df["lon"]),
@@ -182,21 +190,30 @@ async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
     lon = (lon + 180) % 360
     dataset = datasets[reconstruction]["variables"][variable]
     data = dataset.sel(lat=lat, lon=lon, member=0)
-    return {"time": np.ndarray.tolist(data.variables["time"].data),
-            "values": np.ndarray.tolist(data.variables[variable].data)
-            }
+    return {
+        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
+        "time": np.ndarray.tolist(data.variables["time"].data),
+        "values": np.ndarray.tolist(data.variables[variable].data)
+    }
 
 
 # Assumes lon is -180-180, returns a time series for all reconstructions
 @app.get("/timeseries/{variable}/{lat}/{lon}")
-async def timeseries(variable: str, lat: int, lon: int):
+async def timeseries(variable: str, lat: Annotated[int, Path(le=90,ge=-90)], lon: Annotated[int, Path(le=180,ge=-180)]):
     result = []
     for k in datasets.keys():
         lon = (lon + 180) % 360
         dataset = datasets[k]["variables"][variable]
         data = dataset.sel(lat=lat, lon=lon, member=0)
+        df = data.to_dataframe().reset_index()
+        df = df.drop(columns=['lat', 'lon'])
+        df['time'] = df['time']
+        df.rename(columns={'time': "x", variable: 'y'}, inplace=True)
         result.append({
             "name": datasets[k]["name"],
-            "data": np.ndarray.tolist(data.variables[variable].data),
+            "data": df.to_dict(orient='records'),
         })
-    return {"values": result}
+    return {
+        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
+        "values": result
+    }
