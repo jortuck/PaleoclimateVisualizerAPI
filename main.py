@@ -134,7 +134,7 @@ app.add_middleware(
 @app.middleware("http")
 async def cache(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Cache-Control"] = "public, max-age=14400"
+    #response.headers["Cache-Control"] = "public, max-age=14400"
     return response
 
 # root shows possible data sets
@@ -237,9 +237,10 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         df = df.drop(columns=['lat', 'lon'])
         df['time'] = df['time']
         df.rename(columns={'time': "x", variable: 'y'}, inplace=True)
+        print(df.values.tolist())
         result.append({
             "name": datasets[k]["name"],
-            "data": df.to_dict(orient='records'),
+            "data": df.values.tolist(),
         })
     return {
         "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
