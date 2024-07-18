@@ -217,10 +217,12 @@ async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
     lon = (lon + 180) % 360
     dataset = datasets[reconstruction]["variables"][variable]
     data = dataset.sel(lat=lat, lon=lon, member=0)
+    df = data.to_dataframe().reset_index()
+    df = df.drop(columns=['lat', 'lon'])
+    df['time'] = df['time']
     return {
         "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
-        "time": np.ndarray.tolist(data.variables["time"].data),
-        "values": np.ndarray.tolist(data.variables[variable].data)
+        "dat": df.values.tolist()
     }
 
 
@@ -236,8 +238,6 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         df = data.to_dataframe().reset_index()
         df = df.drop(columns=['lat', 'lon'])
         df['time'] = df['time']
-        df.rename(columns={'time': "x", variable: 'y'}, inplace=True)
-        print(df.values.tolist())
         result.append({
             "name": datasets[k]["name"],
             "data": df.values.tolist(),
