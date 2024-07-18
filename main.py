@@ -131,6 +131,11 @@ app.add_middleware(
     max_age=600
 )
 
+@app.middleware("http")
+async def cache(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "public, max-age=14400"
+    return response
 
 # root shows possible data sets
 @app.get("/")
