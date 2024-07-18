@@ -72,6 +72,8 @@ datasets = {
     "cesm": {
         "name": "iCESM Last Millennium Ensemble",
         "nameShort": "CESM LM",
+        "timeStart": 1900,
+        "timeEnd": 2005,
         "variables": {
             "psl": xr.open_dataset("./data/cesm/psl.nc"),
             "tas": xr.open_dataset("./data/cesm/tas.nc"),
@@ -81,6 +83,8 @@ datasets = {
     "hadcm3": {
         "name": "HadCM3 Last Millennium Ensemble",
         "nameShort": "HadCM3 LM",
+        "timeStart": 1900,
+        "timeEnd": 2005,
         "variables": {
             "psl": xr.open_dataset("./data/hadcm3/psl.nc"),
             "tas": xr.open_dataset("./data/hadcm3/tas.nc"),
@@ -90,6 +94,8 @@ datasets = {
     "lens": {
         "name": "CESM1 Large Ensemble",
         "nameShort": "LENS",
+        "timeStart": 1900,
+        "timeEnd": 2005,
         "variables": {
             "psl": xr.open_dataset("./data/lens/psl.nc"),
             "tas": xr.open_dataset("./data/lens/tas.nc"),
@@ -99,6 +105,8 @@ datasets = {
     "pace": {
         "name": "CESM1 Pacific Pacemaker Ensemble",
         "nameShort": "PACE",
+        "timeStart": 1900,
+        "timeEnd": 2005,
         "variables": {
             "psl": xr.open_dataset("./data/pace/psl.nc"),
             "tas": xr.open_dataset("./data/pace/tas.nc"),
@@ -133,6 +141,8 @@ async def root():
             "reconstruction": str(key),
             "name": datasets[key]["name"],
             "nameShort": datasets[key]["nameShort"],
+            "timeStart": datasets[key]["timeStart"],
+            "timeEnd": datasets[key]["timeEnd"],
             "variables": list(datasets[key]["variables"].keys())
         }
         sets.append(dictionary)
@@ -149,10 +159,8 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     dataset = datasets[reconstruction]["variables"][variable]
 
     data = dataset[variable]
-
     data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
                                                                   drop=True)
-
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
         degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
