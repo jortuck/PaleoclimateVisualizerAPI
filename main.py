@@ -177,6 +177,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     bound = absFloorMinimum(np.min(df["value"]),np.max(df["value"]))
     return {"min": -bound,
             "max": bound,
+            "variable": variables[variable]["trendUnit"],
             "name": datasets[reconstruction][
                         "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
@@ -200,6 +201,7 @@ async def values(reconstruction: str, variable: str, year: int):
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
+            "variable": variables[variable]["annualUnit"],
             "name": datasets[reconstruction]["nameShort"] + " Reconstruction " + str(year),
             "colorMap": generateColorAxis(variableColorMaps.get(variable)),
             "lats": list(df['lat']),
