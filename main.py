@@ -224,23 +224,6 @@ async def values(reconstruction: str, variable: str, year: int):
             "values": list(df["value"])}
 
 
-# Assumes lon is -180-180, returns a time series for a specific reconstruction
-@app.get("/timeseries/{reconstruction}/{variable}/{lat}/{lon}")
-async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
-    if (not list(datasets.keys()).__contains__(reconstruction) or not list(
-            datasets[reconstruction]["variables"].keys()).__contains__(variable)):
-        raise HTTPException(status_code=404, detail="Invalid dataset selection")
-
-    lon = (lon + 180) % 360
-    dataset = datasets[reconstruction]["variables"][variable]
-    data = dataset.sel(lat=lat, lon=lon, member=0)
-    df = data.to_dataframe().reset_index()
-    df = df.drop(columns=['lat', 'lon'])
-    df['time'] = df['time']
-    return {
-        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
-        "dat": df.values.tolist()
-    }
 
 
 # Assumes lon is -180-180, returns a time series for all reconstructions
@@ -270,21 +253,24 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         data = dataset.sel(lat=lat, lon=lon, member=0)
         df = data.to_dataframe().reset_index()
         df = df.drop(columns=['lat', 'lon'])
+        allValues = df.values.tolist()
+        df = df[df["time"] >= np.min(era5_df["time"])]
+        ce, p_value = pearsonr(df[variable], era5_df[era5_variable])
         result.append({
-            "name": datasets[k]["name"],
-            "data": df.values.tolist(),
+            "name": f'{datasets[k]["name"]}, CE={np.around(ce,2)}, p_value={np.around(p_value,3)}',
+            "data": allValues,
         })
+        print()
 
     return {
-        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
-        "values": result
-    }
+            "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
+            "values": result
+        }
 
 @app.get("/timeseries/{variable/{n}/{s}/{e}/{w}")
 def timeSeriesArea(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
                    endYear: int = 2005):
     dataset = datasets[reconstruction]["variables"][variable]
-
     data = dataset[variable]
     data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
                                                                   drop=True)
