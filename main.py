@@ -44,12 +44,14 @@ variables = {
         },
 }
 
+
 # Takes an x and y value, find the one with the largest absolute value, and returns that value
 # floored.
-def absFloorMinimum(x,y):
+def absFloorMinimum(x, y):
     x = math.fabs(x)
     y = math.fabs(y)
     return math.floor(math.fabs(x if x > y else y))
+
 
 def get_colormap_colors(colormap, num_colors=256):
     cmap = cm.get_cmap(colormap, num_colors)
@@ -146,11 +148,13 @@ app.add_middleware(
     max_age=600
 )
 
+
 @app.middleware("http")
 async def cache(request: Request, call_next):
     response = await call_next(request)
     response.headers["Cache-Control"] = "public, max-age=14400"
     return response
+
 
 # root shows possible data sets
 @app.get("/")
@@ -189,7 +193,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
     df["value"] = df["value"] * variables[variable]["multiplier"]
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    bound = absFloorMinimum(np.min(df["value"]),np.max(df["value"]))
+    bound = absFloorMinimum(np.min(df["value"]), np.max(df["value"]))
     return {"min": -bound,
             "max": bound,
             "variable": variables[variable]["trendUnit"],
@@ -224,8 +228,6 @@ async def values(reconstruction: str, variable: str, year: int):
             "values": list(df["value"])}
 
 
-
-
 # Assumes lon is -180-180, returns a time series for all reconstructions
 @app.get("/timeseries/{variable}/{lat}/{lon}")
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
@@ -234,19 +236,17 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     lon = (lon + 180) % 360
 
     era5_dataset = instrumental["era5"]["variables"][variable]
-    era5_data = era5_dataset.where(era5_dataset['time']<=2005,drop=True).sel(lat=lat, lon=lon)
+    era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
     era5_variable = variable
     if variable == "us":
         era5_variable = "u1000"
-    era5_df[era5_variable] = era5_df[era5_variable]
+    era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     result.append({
         "name": instrumental["era5"]["name"],
         "data": era5_df.values.tolist(),
     })
-
-
 
     for k in datasets.keys():
         dataset = datasets[k]["variables"][variable]
@@ -255,40 +255,37 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         df = df.drop(columns=['lat', 'lon'])
         allValues = df.values.tolist()
         df = df[df["time"] >= np.min(era5_df["time"])]
-        ce, p_value = pearsonr(df[variable], era5_df[era5_variable])
+        r, p_value = pearsonr(df[variable], era5_df[era5_variable])
         result.append({
-            "name": f'{datasets[k]["name"]}, CE={np.around(ce,2)}, p_value={np.around(p_value,3)}',
+            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 10)}',
             "data": allValues,
         })
-        print()
-
     return {
-            "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
-            "values": result
-        }
+        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
+        "values": result
+    }
 
-@app.get("/timeseries/{variable/{n}/{s}/{e}/{w}")
-def timeSeriesArea(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
-                   endYear: int = 2005):
-    dataset = datasets[reconstruction]["variables"][variable]
-    data = dataset[variable]
-    data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
-                                                                  drop=True)
-    trends = data.polyfit(dim='time', deg=1)
-    slope = trends.sel(
-        degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
-    slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
-    df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
-    df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
-    df["value"] = df["value"] * variables[variable]["multiplier"]
-    df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    bound = absFloorMinimum(np.min(df["value"]),np.max(df["value"]))
-    return {"min": -bound,
-            "max": bound,
-            "variable": variables[variable]["trendUnit"],
-            "name": datasets[reconstruction][
-                        "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
-            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
-            "lats": list(df['lat']),
-            "lons": list(df['lon']),
-            "values": list(df['value'])}
+
+@app.get("/timeseries/{variable}/{n}/{s}/{e}/{w}")
+def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
+    result = []
+    for k in datasets.keys():
+        dataset = datasets[k]["variables"][variable]
+        data = dataset.sel(member=0).where(
+            (dataset["lat"] <= n) &
+            (dataset["lat"] >= -s) &
+            (dataset["lon"] <= e) &
+            (dataset["lon"] >= -w),
+        drop=True)
+        data = data.mean(dim="time")
+        df = data.to_dataframe().reset_index()
+        df = df.drop(columns=['lat', 'lon'])
+        allValues = df.values.tolist()
+        result.append({
+            "name": f'{datasets[k]["name"]}',
+            "data": allValues,
+        })
+    return {
+        "name": f'Timeseries For area',
+        "values": result
+    }
