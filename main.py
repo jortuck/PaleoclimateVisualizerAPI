@@ -259,7 +259,6 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
             "data": df.values.tolist(),
         })
     for k in instrumental.keys():
-        lon = (lon + 180) % 360
         dataset = instrumental[k]["variables"][variable]
         data = dataset.where(dataset['time']<=2005,drop=True).sel(lat=lat, lon=lon)
         df = data.to_dataframe().reset_index()
