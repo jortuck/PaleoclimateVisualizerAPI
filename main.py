@@ -7,6 +7,7 @@ import pandas as pd
 import xarray as xr
 import numpy as np
 import json
+from scipy.stats import pearsonr
 from matplotlib import cm
 
 variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "PiYG_r"}
@@ -247,31 +248,61 @@ async def timeseries(reconstruction: str, variable: str, lat: int, lon: int):
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
+    lon = (lon + 180) % 360
+
+    era5_dataset = instrumental["era5"]["variables"][variable]
+    era5_data = era5_dataset.where(era5_dataset['time']<=2005,drop=True).sel(lat=lat, lon=lon)
+    era5_df = era5_data.to_dataframe().reset_index()
+    era5_df = era5_df.drop(columns=['lat', 'lon'])
+    era5_variable = variable
+    if variable == "us":
+        era5_variable = "u1000"
+    era5_df[era5_variable] = era5_df[era5_variable]
+    result.append({
+        "name": instrumental["era5"]["name"],
+        "data": era5_df.values.tolist(),
+    })
+
+
+
     for k in datasets.keys():
-        lon = (lon + 180) % 360
         dataset = datasets[k]["variables"][variable]
         data = dataset.sel(lat=lat, lon=lon, member=0)
         df = data.to_dataframe().reset_index()
         df = df.drop(columns=['lat', 'lon'])
-        df['time'] = df['time']
         result.append({
             "name": datasets[k]["name"],
             "data": df.values.tolist(),
         })
-    for k in instrumental.keys():
-        dataset = instrumental[k]["variables"][variable]
-        data = dataset.where(dataset['time']<=2005,drop=True).sel(lat=lat, lon=lon)
-        df = data.to_dataframe().reset_index()
-        df = df.drop(columns=['lat', 'lon'])
-        df['time'] = df['time']
-        if variable == "us":
-            variable = "u1000"
-        df[variable] = df[variable]
-        result.append({
-            "name": instrumental[k]["name"],
-            "data": df.values.tolist(),
-        })
+
     return {
         "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
         "values": result
     }
+
+@app.get("/timeseries/{variable/{n}/{s}/{e}/{w}")
+def timeSeriesArea(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
+                   endYear: int = 2005):
+    dataset = datasets[reconstruction]["variables"][variable]
+
+    data = dataset[variable]
+    data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
+                                                                  drop=True)
+    trends = data.polyfit(dim='time', deg=1)
+    slope = trends.sel(
+        degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
+    slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
+    df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
+    df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
+    df["value"] = df["value"] * variables[variable]["multiplier"]
+    df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
+    bound = absFloorMinimum(np.min(df["value"]),np.max(df["value"]))
+    return {"min": -bound,
+            "max": bound,
+            "variable": variables[variable]["trendUnit"],
+            "name": datasets[reconstruction][
+                        "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
+            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
+            "lats": list(df['lat']),
+            "lons": list(df['lon']),
+            "values": list(df['value'])}
