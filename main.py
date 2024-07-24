@@ -115,6 +115,20 @@ datasets = {
     }
 }
 
+instrumental = {
+    "era5": {
+        "name": "ERA5",
+        "nameShort": "ERA5",
+        "timeStart": 1900,
+        "timeEnd": 2005,
+        "variables": {
+            "psl": xr.open_dataset("./data/era5/psl.nc"),
+            "tas": xr.open_dataset("./data/era5/tas.nc"),
+            "us": xr.open_dataset("./data/era5/u1000.nc"),
+        }
+    }
+}
+
 app = FastAPI()
 
 # add origins for cors
@@ -242,6 +256,20 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         df['time'] = df['time']
         result.append({
             "name": datasets[k]["name"],
+            "data": df.values.tolist(),
+        })
+    for k in instrumental.keys():
+        lon = (lon + 180) % 360
+        dataset = instrumental[k]["variables"][variable]
+        data = dataset.where(dataset['time']<=2005,drop=True).sel(lat=lat, lon=lon)
+        df = data.to_dataframe().reset_index()
+        df = df.drop(columns=['lat', 'lon'])
+        df['time'] = df['time']
+        if variable == "us":
+            variable = "u1000"
+        df[variable] = df[variable]
+        result.append({
+            "name": instrumental[k]["name"],
             "data": df.values.tolist(),
         })
     return {
