@@ -70,6 +70,11 @@ def generateColorAxis(colormap_name: str) -> list:
         result.append([stop, str_color])
     return result
 
+def toDegreesEast(lon:int):
+    if lon < 0:
+        lon = lon+360
+    return lon
+
 
 datasets = {
     "cesm": {
@@ -228,13 +233,13 @@ async def values(reconstruction: str, variable: str, year: int):
             "values": list(df["value"])}
 
 
-# Assumes lon is -180-180, returns a time series for all reconstructions
+# Assumes lon is -180 to 180, returns a time series for all reconstructions
 @app.get("/timeseries/{variable}/{lat}/{lon}")
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
-    lon = (lon + 180) % 360
-
+    lon = toDegreesEast(lon);
+    print(lon)
     era5_dataset = instrumental["era5"]["variables"][variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
     era5_df = era5_data.to_dataframe().reset_index()
