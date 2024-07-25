@@ -20,7 +20,7 @@ variables = {
             "nameShort": "SLP",
             "multiplier": 1,
             "trendUnit": "hPa/century",
-            "annualUnit": "Pa"
+            "annualUnit": "hPa"
         },
     "us":
         {
@@ -245,6 +245,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     result.append({
         "name": instrumental["era5"]["name"],
+        "dashStyle": 'Dash',
         "data": era5_df.values.tolist(),
     })
 
