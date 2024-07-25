@@ -257,7 +257,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         df = df[df["time"] >= np.min(era5_df["time"])]
         r, p_value = pearsonr(df[variable], era5_df[era5_variable])
         result.append({
-            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 10)}',
+            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
             "data": allValues,
         })
     return {
