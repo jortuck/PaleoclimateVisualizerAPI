@@ -268,7 +268,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
             "data": allValues,
         })
     return {
-        "name": f'Timeseries For ({lat},{(lon + 180) % 360 - 180})',
+        "name": f'Time Series For ({lat},{(lon + 180) % 360 - 180})',
         "values": result
     }
 
@@ -276,13 +276,16 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 @app.get("/timeseries/{variable}/{n}/{s}/{e}/{w}")
 def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
     result = []
+    lats = np.arange(np.min([n,s]),np.max([n,s])+1)
 
+    if(e < w):
+        lons = np.arange(np.min([e,w]),np.max([e,w])+1)
+    else:
+        lons = np.concatenate((np.arange(e,181),np.arange(-180,w+1)))
     era5_dataset = instrumental["era5"]["variables"][variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
-        (era5_dataset["lat"] <= n) &
-        (era5_dataset["lat"] >= s) &
-        (era5_dataset["lon"] <= e) &
-        (era5_dataset["lon"] >= w),
+        (era5_dataset["lat"].isin(lats)) &
+        (era5_dataset["lon"].isin(lons)),
         drop=True)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_variable = variable
@@ -301,10 +304,8 @@ def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
     for k in datasets.keys():
         dataset = datasets[k]["variables"][variable]
         data = dataset.sel(member=0).where(
-            (dataset["lat"] <= n) &
-            (dataset["lat"] >= s) &
-            (dataset["lon"] <= e) &
-            (dataset["lon"] >= w),
+            (dataset["lat"].isin(lats)) &
+            (dataset["lon"].isin(lons)),
         drop=True)
         df = data.to_dataframe().reset_index()
         df = df.groupby("time").mean().reset_index()
@@ -317,6 +318,6 @@ def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
             "data": allValues,
         })
     return {
-        "name": f'Timeseries For Area ({n},{s},{e},{w})',
+        "name": f'Time Series For Area ({n},{s},{e},{w})',
         "values": result
     }
