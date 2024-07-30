@@ -195,7 +195,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
                                                                   drop=True)
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
-        degree=1)  # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
+        degree=1).where(trends['lat'] <= 0, drop=True) # to drop north hemisphere
     slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
@@ -220,8 +220,7 @@ async def values(reconstruction: str, variable: str, year: int):
         raise HTTPException(status_code=404, detail="Invalid dataset selection")
 
     dataset = datasets[reconstruction]["variables"][variable]
-    data = dataset.sel(time=year)
-    # add .where(trends['lat'] <= 0, drop=True) to drop north hemisphere
+    data = dataset.sel(time=year).where(dataset['lat'] <= 0, drop=True) #to drop north hemisphere
     data[variable] = np.around(data[variable].astype('float64'), 6)
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
     df.rename(columns={variable: 'value'}, inplace=True)
@@ -277,23 +276,47 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 @app.get("/timeseries/{variable}/{n}/{s}/{e}/{w}")
 def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
     result = []
+
+    era5_dataset = instrumental["era5"]["variables"][variable]
+    era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
+        (era5_dataset["lat"] <= n) &
+        (era5_dataset["lat"] >= s) &
+        (era5_dataset["lon"] <= e) &
+        (era5_dataset["lon"] >= w),
+        drop=True)
+    era5_df = era5_data.to_dataframe().reset_index()
+    era5_variable = variable
+    if variable == "us":
+        era5_variable = "u1000"
+    era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
+    era5_df = era5_df.groupby("time").mean().reset_index()
+    era5_df = era5_df.drop(columns=['lat', 'lon'])
+
+    result.append({
+        "name": instrumental["era5"]["name"],
+        "dashStyle": 'Dash',
+        "data": era5_df.values.tolist(),
+    })
+
     for k in datasets.keys():
         dataset = datasets[k]["variables"][variable]
         data = dataset.sel(member=0).where(
             (dataset["lat"] <= n) &
-            (dataset["lat"] >= -s) &
+            (dataset["lat"] >= s) &
             (dataset["lon"] <= e) &
-            (dataset["lon"] >= -w),
+            (dataset["lon"] >= w),
         drop=True)
-        data = data.mean(dim="time")
         df = data.to_dataframe().reset_index()
+        df = df.groupby("time").mean().reset_index()
         df = df.drop(columns=['lat', 'lon'])
         allValues = df.values.tolist()
+        df = df[df["time"] >= np.min(era5_df["time"])]
+        r, p_value = pearsonr(df[variable], era5_df[era5_variable])
         result.append({
-            "name": f'{datasets[k]["name"]}',
+            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
             "data": allValues,
         })
     return {
-        "name": f'Timeseries For area',
+        "name": f'Timeseries For Area ({n},{s},{e},{w})',
         "values": result
     }
