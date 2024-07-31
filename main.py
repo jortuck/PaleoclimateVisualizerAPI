@@ -277,11 +277,16 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 def timeSeriesArea(variable: str, n: int, s: int, e: int, w: int):
     result = []
     lats = np.arange(np.min([n,s]),np.max([n,s])+1)
-
-    if(e < w):
+    e = toDegreesEast(e)
+    w = toDegreesEast(w)
+    print(e,w)
+    if e < w:
         lons = np.arange(np.min([e,w]),np.max([e,w])+1)
+    elif e == w:
+        lons = np.array([e])
     else:
-        lons = np.concatenate((np.arange(e,181),np.arange(-180,w+1)))
+        lons = np.concatenate((np.arange(e,361),np.arange(0,w+1)))
+
     era5_dataset = instrumental["era5"]["variables"][variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
         (era5_dataset["lat"].isin(lats)) &
