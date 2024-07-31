@@ -195,7 +195,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
                                                                   drop=True)
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
-        degree=1)# .where(trends['lat'] <= 0, drop=True) # to drop north hemisphere
+        degree=1)
     slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
     df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
     df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
@@ -220,7 +220,7 @@ async def values(reconstruction: str, variable: str, year: int):
         raise HTTPException(status_code=404, detail="Invalid dataset selection")
 
     dataset = datasets[reconstruction]["variables"][variable]
-    data = dataset.sel(time=year)# .where(dataset['lat'] <= 0, drop=True) #to drop north hemisphere
+    data = dataset.sel(time=year)
     data[variable] = np.around(data[variable].astype('float64'), 6)
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
     df.rename(columns={variable: 'value'}, inplace=True)
