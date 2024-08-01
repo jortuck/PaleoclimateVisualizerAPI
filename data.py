@@ -122,7 +122,8 @@ instrumental = {
         "variables": {
             "psl": xr.open_dataset("./data/era5/psl.nc"),
             "tas": xr.open_dataset("./data/era5/tas.nc"),
-            "us": xr.open_dataset("./data/era5/u1000.nc"),
+            "u1000": xr.open_dataset("./data/era5/u1000.nc"),
+            "v10": xr.open_dataset("./data/era5/v10.nc"),
         }
     }
 }

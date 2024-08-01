@@ -114,14 +114,19 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
     lon = toDegreesEast(lon)
-    era5_dataset = instrumental["era5"]["variables"][variable]
+
+    era5_variable = variable
+    if variable == "us" or variable == "u10":
+        era5_variable = "u1000"
+
+    era5_dataset = instrumental["era5"]["variables"][era5_variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
 
-    era5_variable = variable
-    if variable == "us":
-        era5_variable = "u1000"
+
+
+
 
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     result.append({
@@ -131,18 +136,19 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     })
 
     for k in datasets.keys():
-        dataset = datasets[k]["variables"][variable]
-        dataset = dataset.squeeze()
-        data = dataset.sel(lat=lat, lon=lon, method='nearest')
-        df = data.to_dataframe().reset_index()
-        df = df.drop(columns=['lat', 'lon'])
-        allValues = df.values.tolist()
-        df = df[df["time"] >= np.min(era5_df["time"])]
-        r, p_value = pearsonr(df[variable], era5_df[era5_variable])
-        result.append({
-            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
-            "data": allValues,
-        })
+        if variable in datasets[k]["variables"]:
+            dataset = datasets[k]["variables"][variable]
+            dataset = dataset.squeeze()
+            data = dataset.sel(lat=lat, lon=lon, method='nearest')
+            df = data.to_dataframe().reset_index()
+            df = df.drop(columns=['lat', 'lon'])
+            allValues = df.values.tolist()
+            df = df[df["time"] >= np.min(era5_df["time"])]
+            r, p_value = pearsonr(df[variable], era5_df[era5_variable])
+            result.append({
+                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "data": allValues,
+            })
     return {
         "name": f'Time Series For ({lat},{(lon + 180) % 360 - 180})',
         "values": result
@@ -163,15 +169,19 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     else:
         lons = np.concatenate((np.arange(start,361),np.arange(0, stop + 1)))
 
-    era5_dataset = instrumental["era5"]["variables"][variable]
+    era5_variable = variable
+    if variable == "us" or variable == "u10":
+        era5_variable = "u1000"
+    elif variable == "v10":
+        era5_variable = "v1000"
+
+    era5_dataset = instrumental["era5"]["variables"][era5_variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
         (era5_dataset["lat"].isin(lats)) &
         (era5_dataset["lon"].isin(lons)),
         drop=True)
     era5_df = era5_data.to_dataframe().reset_index()
-    era5_variable = variable
-    if variable == "us":
-        era5_variable = "u1000"
+
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     era5_df = era5_df.groupby("time").mean().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
@@ -183,22 +193,23 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     })
 
     for k in datasets.keys():
-        dataset = datasets[k]["variables"][variable]
-        dataset = dataset.squeeze()
-        data = dataset.where(
-            (dataset["lat"].isin(lats)) &
-            (dataset["lon"].isin(lons)),
-        drop=True)
-        df = data.to_dataframe().reset_index()
-        df = df.groupby("time").mean().reset_index()
-        df = df.drop(columns=['lat', 'lon'])
-        allValues = df.values.tolist()
-        df = df[df["time"] >= np.min(era5_df["time"])]
-        r, p_value = pearsonr(df[variable], era5_df[era5_variable])
-        result.append({
-            "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
-            "data": allValues,
-        })
+        if variable in datasets[k]["variables"]:
+            dataset = datasets[k]["variables"][variable]
+            dataset = dataset.squeeze()
+            data = dataset.where(
+                (dataset["lat"].isin(lats)) &
+                (dataset["lon"].isin(lons)),
+            drop=True)
+            df = data.to_dataframe().reset_index()
+            df = df.groupby("time").mean().reset_index()
+            df = df.drop(columns=['lat', 'lon'])
+            allValues = df.values.tolist()
+            df = df[df["time"] >= np.min(era5_df["time"])]
+            r, p_value = pearsonr(df[variable], era5_df[era5_variable])
+            result.append({
+                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "data": allValues,
+            })
     return {
         "name": f'Time Series For Area ({n},{s},{start},{stop})',
         "values": result
