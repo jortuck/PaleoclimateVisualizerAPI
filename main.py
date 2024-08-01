@@ -1,15 +1,10 @@
 from fastapi import FastAPI, HTTPException, Request, Response, Query, Path
 from typing import Annotated
-import math
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import pandas as pd
 import xarray as xr
 import numpy as np
-import json
 from scipy.stats import pearsonr
-from matplotlib import cm
-
+from util import absFloorMinimum, toDegreesEast, generateColorAxis
 variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "PiYG_r"}
 variables = {
     "psl":
@@ -43,40 +38,6 @@ variables = {
             "annualUnit": "K"
         },
 }
-
-
-# Takes an x and y value, find the one with the largest absolute value, and returns that value
-# floored.
-def absFloorMinimum(x, y):
-    x = math.fabs(x)
-    y = math.fabs(y)
-    return math.floor(math.fabs(x if x > y else y))
-
-
-def get_colormap_colors(colormap, num_colors=256):
-    cmap = cm.get_cmap(colormap, num_colors)
-    colors = [cmap(i) for i in range(cmap.N)]
-    stops = np.linspace(0, 1, num_colors)
-    stop_color_pairs = list(zip(stops, colors))
-    return stop_color_pairs
-
-
-def generateColorAxis(colormap_name: str) -> list:
-    result = list()
-    stop_color_values = get_colormap_colors(colormap_name)
-    for stop, color in stop_color_values:
-        str_color = "rgba(" + str(int(color[0] * 255)) + "," + str(int(color[1] * 255)) + "," + str(
-            int(color[2] * 255)) + ",0.9)"
-        result.append([stop, str_color])
-    return result
-
-def toDegreesEast(lon:int):
-    """
-    Converts a lon value from -180 to 180, to 0 to 360
-    """
-    if lon < 0:
-        lon = lon+360
-    return lon
 
 
 datasets = {
