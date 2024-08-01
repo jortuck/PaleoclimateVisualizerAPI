@@ -21,6 +21,16 @@ variables = {
             "trendUnit": "m/s/century",
             "annualUnit": "m/s"
         },
+    "u10":
+        {
+            "variable": "u10",
+            "colorMap": "PuOr_r",
+            "name": "Near Surface Zonal Wind Speed Anomaly",
+            "nameShort": "U10",
+            "multiplier": 100,
+            "trendUnit": "m/s/century",
+            "annualUnit": "m/s"
+        },
     "tas":
         {
             "variable": "tas",
@@ -39,7 +49,7 @@ datasets = {
         "variables": {
             "psl": xr.open_dataset("./data/cesm/psl.nc"),
             "tas": xr.open_dataset("./data/cesm/tas.nc"),
-            "us": xr.open_dataset("./data/cesm/us.nc"),
+            "u10": xr.open_dataset("./data/cesm/u10.nc"),
         }
     },
     "hadcm3": {
@@ -60,13 +70,31 @@ datasets = {
             "us": xr.open_dataset("./data/lens/us.nc"),
         }
     },
+    "lens2": {
+        "name": "CESM1 Large Ensemble 2",
+        "nameShort": "LENS 2",
+        "variables": {
+            "psl": xr.open_dataset("./data/lens2/psl.nc"),
+            "tas": xr.open_dataset("./data/lens2/tas.nc"),
+            "us": xr.open_dataset("./data/lens2/u10.nc"),
+        }
+    },
     "pace": {
         "name": "CESM1 Pacific Pacemaker Ensemble",
         "nameShort": "PACE",
         "variables": {
             "psl": xr.open_dataset("./data/pace/psl.nc"),
             "tas": xr.open_dataset("./data/pace/tas.nc"),
-            "us": xr.open_dataset("./data/pace/us.nc"),
+            "u10": xr.open_dataset("./data/pace/u10.nc"),
+        }
+    },
+    "pace2": {
+        "name": "CESM1 Pacific Pacemaker Ensemble 2",
+        "nameShort": "PACE 2",
+        "variables": {
+            "psl": xr.open_dataset("./data/pace2/psl.nc"),
+            "tas": xr.open_dataset("./data/pace2/tas.nc"),
+            "u10": xr.open_dataset("./data/pace2/u10.nc"),
         }
     }
 }
