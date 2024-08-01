@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import pearsonr
 from util import absFloorMinimum, toDegreesEast, generateColorAxis
 from data import variables, datasets, instrumental
-variableColorMaps = {"psl": "RdBu_r", "us": "PuOr_r", "tas": "PiYG_r"}
 
 
 app = FastAPI()
@@ -81,7 +80,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
             "variable": variables[variable]["trendUnit"],
             "name": datasets[reconstruction][
                         "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
-            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
+            "colorMap": generateColorAxis(variables.get(variable)["colorMap"]),
             "lats": list(df['lat']),
             "lons": list(df['lon']),
             "values": list(df['value'])}
@@ -103,7 +102,7 @@ async def values(reconstruction: str, variable: str, year: int):
             "max": np.max(df["value"]),
             "variable": variables[variable]["annualUnit"],
             "name": datasets[reconstruction]["nameShort"] + " Reconstruction " + str(year),
-            "colorMap": generateColorAxis(variableColorMaps.get(variable)),
+            "colorMap": generateColorAxis(variables.get(variable)["colorMap"]),
             "lats": list(df['lat']),
             "lons": list(df["lon"]),
             "values": list(df["value"])}
