@@ -132,7 +132,8 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 
     for k in datasets.keys():
         dataset = datasets[k]["variables"][variable]
-        data = dataset.sel(lat=lat, lon=lon, member=0)
+        dataset = dataset.squeeze()
+        data = dataset.sel(lat=lat, lon=lon, method='nearest')
         df = data.to_dataframe().reset_index()
         df = df.drop(columns=['lat', 'lon'])
         allValues = df.values.tolist()
@@ -183,7 +184,8 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
 
     for k in datasets.keys():
         dataset = datasets[k]["variables"][variable]
-        data = dataset.sel(member=0).where(
+        dataset = dataset.squeeze()
+        data = dataset.where(
             (dataset["lat"].isin(lats)) &
             (dataset["lon"].isin(lons)),
         drop=True)
