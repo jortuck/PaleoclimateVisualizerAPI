@@ -240,14 +240,16 @@ async def values(reconstruction: str, variable: str, year: int):
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
-    lon = toDegreesEast(lon);
+    lon = toDegreesEast(lon)
     era5_dataset = instrumental["era5"]["variables"][variable]
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
+
     era5_variable = variable
     if variable == "us":
         era5_variable = "u1000"
+
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     result.append({
         "name": instrumental["era5"]["name"],
