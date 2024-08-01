@@ -31,6 +31,16 @@ variables = {
             "trendUnit": "m/s/century",
             "annualUnit": "m/s"
         },
+    "v10":
+        {
+            "variable": "v10",
+            "colorMap": "PuOr_r",
+            "name": "Meridional Wind Speed Anomaly",
+            "nameShort": "V10",
+            "multiplier": 100,
+            "trendUnit": "m/s/century",
+            "annualUnit": "m/s"
+        },
     "tas":
         {
             "variable": "tas",
@@ -50,6 +60,7 @@ datasets = {
             "psl": xr.open_dataset("./data/cesm/psl.nc"),
             "tas": xr.open_dataset("./data/cesm/tas.nc"),
             "u10": xr.open_dataset("./data/cesm/u10.nc"),
+            "v10": xr.open_dataset("./data/cesm/v10.nc"),
         }
     },
     "hadcm3": {
@@ -76,7 +87,8 @@ datasets = {
         "variables": {
             "psl": xr.open_dataset("./data/lens2/psl.nc"),
             "tas": xr.open_dataset("./data/lens2/tas.nc"),
-            "us": xr.open_dataset("./data/lens2/u10.nc"),
+            "u10": xr.open_dataset("./data/lens2/u10.nc"),
+            "v10": xr.open_dataset("./data/lens2/v10.nc"),
         }
     },
     "pace": {
@@ -86,6 +98,7 @@ datasets = {
             "psl": xr.open_dataset("./data/pace/psl.nc"),
             "tas": xr.open_dataset("./data/pace/tas.nc"),
             "u10": xr.open_dataset("./data/pace/u10.nc"),
+            "v10": xr.open_dataset("./data/pace/v10.nc"),
         }
     },
     "pace2": {
@@ -95,6 +108,7 @@ datasets = {
             "psl": xr.open_dataset("./data/pace2/psl.nc"),
             "tas": xr.open_dataset("./data/pace2/tas.nc"),
             "u10": xr.open_dataset("./data/pace2/u10.nc"),
+            "v10": xr.open_dataset("./data/pace2/v10.nc"),
         }
     }
 }
