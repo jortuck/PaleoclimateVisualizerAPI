@@ -36,25 +36,23 @@ async def cache(request: Request, call_next):
 async def root():
     sets = []
     for key in datasets.keys():
-        setVariables = []
         timeData = next(iter(datasets[key]["variables"].values())).variables["time"].data
         timeStart = int(timeData.min())
         timeEnd = int(timeData.max())
-        for varKey in datasets[key]["variables"].keys():
-            setVariables.append(variables.get(varKey))
+
         dictionary = {
             "reconstruction": str(key),
             "name": datasets[key]["name"],
             "nameShort": datasets[key]["nameShort"],
             "timeStart": timeStart,
             "timeEnd": timeEnd,
-            "variables": setVariables
+            "variables": list(datasets[key]["variables"].keys())
         }
         sets.append(dictionary)
     variablesArray = []
     for var in variables.keys():
         variablesArray.append(variables[var])
-    return {"reconstructions": sets}
+    return {"reconstructions": sets, "variables": list(variables.values())}
 
 
 @app.get("/trends/{reconstruction}/{variable}")
