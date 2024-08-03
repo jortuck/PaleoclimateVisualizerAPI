@@ -5,10 +5,9 @@ import numpy as np
 from scipy.stats import pearsonr
 from util import absFloorMinimum, toDegreesEast, generateColorAxis
 from data import variables, datasets, instrumental
-
+from mangum import Mangum
 
 app = FastAPI()
-
 # add origins for cors
 origins = [
     "http://localhost:5173",
@@ -22,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=600
 )
+handler = Mangum(app)
 
 
 @app.middleware("http")
