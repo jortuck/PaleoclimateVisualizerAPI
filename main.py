@@ -21,7 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=600
 )
-handler = Mangum(app)
 
 
 @app.middleware("http")
@@ -122,10 +121,6 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
 
-
-
-
-
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     result.append({
         "name": instrumental["era5"]["name"],
@@ -156,7 +151,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 @app.get("/timeseries/{variable}/{n}/{s}/{start}/{stop}")
 def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     result = []
-    lats = np.arange(np.min([n,s]),np.max([n,s])+1)
+    lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
     start = toDegreesEast(start)
     stop = toDegreesEast(stop)
     print(start, stop)
@@ -165,7 +160,7 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     elif start == stop:
         lons = np.array([start])
     else:
-        lons = np.concatenate((np.arange(start,361),np.arange(0, stop + 1)))
+        lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
 
     era5_variable = variable
     if variable == "us" or variable == "u10":
@@ -197,7 +192,7 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
             data = dataset.where(
                 (dataset["lat"].isin(lats)) &
                 (dataset["lon"].isin(lons)),
-            drop=True)
+                drop=True)
             df = data.to_dataframe().reset_index()
             df = df.groupby("time").mean().reset_index()
             df = df.drop(columns=['lat', 'lon'])
@@ -212,3 +207,6 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
         "name": f'Time Series For Area ({n},{s},{start},{stop})',
         "values": result
     }
+
+
+handler = Mangum(app=app)
