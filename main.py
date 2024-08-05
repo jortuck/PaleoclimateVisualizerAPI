@@ -149,12 +149,11 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 
 
 @app.get("/timeseries/{variable}/{n}/{s}/{start}/{stop}")
-def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
+async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     result = []
     lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
     start = toDegreesEast(start)
     stop = toDegreesEast(stop)
-    print(start, stop)
     if start < stop:
         lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
     elif start == stop:
@@ -177,14 +176,14 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
 
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     era5_df = era5_df.groupby("time").mean().reset_index()
-    era5_df = era5_df.drop(columns=['lat', 'lon'])
+    era5_df.drop(columns=['lat', 'lon'], inplace=True)
 
     result.append({
         "name": instrumental["era5"]["name"],
         "dashStyle": 'Dash',
         "data": era5_df.values.tolist(),
     })
-
+    # look into inplace and memory profiler
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
             dataset = datasets[k]["variables"][variable]
@@ -195,7 +194,7 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
                 drop=True)
             df = data.to_dataframe().reset_index()
             df = df.groupby("time").mean().reset_index()
-            df = df.drop(columns=['lat', 'lon'])
+            df.drop(columns=['lat', 'lon'], inplace=True)
             allValues = df.values.tolist()
             df = df[df["time"] >= np.min(era5_df["time"])]
             r, p_value = pearsonr(df[variable], era5_df[era5_variable])
