@@ -168,11 +168,11 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
         era5_variable = "v1000"
 
     era5_dataset = instrumental["era5"]["variables"][era5_variable]
-    era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
+    era5_dataset = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
         (era5_dataset["lat"].isin(lats)) &
         (era5_dataset["lon"].isin(lons)),
         drop=True)
-    era5_df = era5_data.to_dataframe().reset_index()
+    era5_df = era5_dataset.to_dataframe().reset_index()
 
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
     era5_df = era5_df.groupby("time").mean().reset_index()
