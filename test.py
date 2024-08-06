@@ -28,7 +28,7 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     elif variable == "v10":
         era5_variable = "v1000"
 
-    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable])
+    era5_dataset = xr.load_dataset(instrumental["era5"]["variables"][era5_variable])
     time_condition = era5_dataset['time'] <= 2005
     lat_condition = era5_dataset['lat'].isin(lats)
     lon_condition = era5_dataset['lon'].isin(lons)
@@ -43,7 +43,7 @@ def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
 
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
-            dataset = xr.open_dataset(datasets[k]["variables"][variable])
+            dataset = xr.load_dataset(datasets[k]["variables"][variable])
             dataset = dataset.squeeze()
             data = dataset.where(lat_condition & lon_condition, drop=True)
             data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
