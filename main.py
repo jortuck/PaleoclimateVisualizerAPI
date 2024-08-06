@@ -6,6 +6,7 @@ from scipy.stats import pearsonr
 from util import absFloorMinimum, toDegreesEast, generateColorAxis
 from data import variables, datasets, instrumental
 from mangum import Mangum
+import xarray as xr
 
 app = FastAPI()
 # add origins for cors
@@ -35,7 +36,8 @@ async def cache(request: Request, call_next):
 async def root():
     sets = []
     for key in datasets.keys():
-        timeData = next(iter(datasets[key]["variables"].values())).variables["time"].data
+        timeData = xr.open_dataset(next(iter(datasets[key]["variables"].values()))).variables[
+            "time"].data
         timeStart = int(timeData.min())
         timeEnd = int(timeData.max())
 
@@ -58,7 +60,7 @@ async def root():
 def calculateTrend(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
                    endYear: int = 2005):
     # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
-    dataset = datasets[reconstruction]["variables"][variable]
+    dataset = xr.load_dataset(datasets[reconstruction]["variables"][variable])
 
     data = dataset[variable]
     data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
@@ -89,7 +91,7 @@ async def values(reconstruction: str, variable: str, year: int):
             datasets[reconstruction]["variables"].keys()).__contains__(variable)):
         raise HTTPException(status_code=404, detail="Invalid dataset selection")
 
-    dataset = datasets[reconstruction]["variables"][variable]
+    dataset = xr.load_dataset(datasets[reconstruction]["variables"][variable])
     data = dataset.sel(time=year)
     data[variable] = np.around(data[variable].astype('float64'), 6)
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
@@ -116,7 +118,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     if variable == "us" or variable == "u10":
         era5_variable = "u1000"
 
-    era5_dataset = instrumental["era5"]["variables"][era5_variable]
+    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable])
     era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
@@ -130,7 +132,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
-            dataset = datasets[k]["variables"][variable]
+            dataset = xr.open_dataset(datasets[k]["variables"][variable])
             dataset = dataset.squeeze()
             data = dataset.sel(lat=lat, lon=lon, method='nearest')
             df = data.to_dataframe().reset_index()
@@ -167,40 +169,31 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     elif variable == "v10":
         era5_variable = "v1000"
 
-    era5_dataset = instrumental["era5"]["variables"][era5_variable]
-    era5_dataset = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).where(
-        (era5_dataset["lat"].isin(lats)) &
-        (era5_dataset["lon"].isin(lons)),
-        drop=True)
-    era5_df = era5_dataset.to_dataframe().reset_index()
+    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable])
+    time_condition = era5_dataset['time'] <= 2005
+    lat_condition = era5_dataset['lat'].isin(lats)
+    lon_condition = era5_dataset['lon'].isin(lons)
 
-    era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
-    era5_df = era5_df.groupby("time").mean().reset_index()
-    era5_df.drop(columns=['lat', 'lon'], inplace=True)
-
+    # Use the conditions to filter the dataset
+    era5_dataset = (era5_dataset.where(time_condition, drop=True)
+                    .where(lat_condition & lon_condition, drop=True))
+    era5_df = era5_dataset.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
     result.append({
         "name": instrumental["era5"]["name"],
         "dashStyle": 'Dash',
         "data": era5_df.values.tolist(),
     })
-    # look into inplace and memory profiler
+
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
-            dataset = datasets[k]["variables"][variable]
+            dataset = xr.open_dataset(datasets[k]["variables"][variable])
             dataset = dataset.squeeze()
-            data = dataset.where(
-                (dataset["lat"].isin(lats)) &
-                (dataset["lon"].isin(lons)),
-                drop=True)
-            df = data.to_dataframe().reset_index()
-            df = df.groupby("time").mean().reset_index()
-            df.drop(columns=['lat', 'lon'], inplace=True)
-            allValues = df.values.tolist()
-            df = df[df["time"] >= np.min(era5_df["time"])]
-            r, p_value = pearsonr(df[variable], era5_df[era5_variable])
+            data = dataset.where(lat_condition & lon_condition, drop=True)
+            data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
+            r, p_value = pearsonr(data[data['time'] >= 1979][variable].values, era5_df[era5_variable])
             result.append({
-                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
-                "data": allValues,
+               "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "data": data.values.tolist(),
             })
     return {
         "name": f'Time Series For Area ({n},{s},{start},{stop})',

@@ -57,58 +57,58 @@ datasets = {
         "name": "iCESM Last Millennium Ensemble",
         "nameShort": "CESM LM",
         "variables": {
-            "psl": xr.open_dataset("./data/cesm/psl.nc"),
-            "tas": xr.open_dataset("./data/cesm/tas.nc"),
-            "u10": xr.open_dataset("./data/cesm/u10.nc"),
-            "v10": xr.open_dataset("./data/cesm/v10.nc"),
+            "psl": "./data/cesm/psl.nc",
+            "tas": "./data/cesm/tas.nc",
+            "u10": "./data/cesm/u10.nc",
+            "v10": "./data/cesm/v10.nc",
         }
     },
     "hadcm3": {
         "name": "HadCM3 Last Millennium Ensemble",
         "nameShort": "HadCM3 LM",
         "variables": {
-            "psl": xr.open_dataset("./data/hadcm3/psl.nc"),
-            "tas": xr.open_dataset("./data/hadcm3/tas.nc"),
-            "us": xr.open_dataset("./data/hadcm3/us.nc"),
+            "psl": "./data/hadcm3/psl.nc",
+            "tas": "./data/hadcm3/tas.nc",
+            "us": "./data/hadcm3/us.nc",
         }
     },
     "lens": {
         "name": "CESM1 Large Ensemble",
         "nameShort": "LENS",
         "variables": {
-            "psl": xr.open_dataset("./data/lens/psl.nc"),
-            "tas": xr.open_dataset("./data/lens/tas.nc"),
-            "us": xr.open_dataset("./data/lens/us.nc"),
+            "psl": "./data/lens/psl.nc",
+            "tas": "./data/lens/tas.nc",
+            "us": "./data/lens/us.nc",
         }
     },
     "lens2": {
         "name": "CESM1 Large Ensemble 2",
         "nameShort": "LENS 2",
         "variables": {
-            "psl": xr.open_dataset("./data/lens2/psl.nc"),
-            "tas": xr.open_dataset("./data/lens2/tas.nc"),
-            "u10": xr.open_dataset("./data/lens2/u10.nc"),
-            "v10": xr.open_dataset("./data/lens2/v10.nc"),
+            "psl": "./data/lens2/psl.nc",
+            "tas": "./data/lens2/tas.nc",
+            "u10": "./data/lens2/u10.nc",
+            "v10": "./data/lens2/v10.nc",
         }
     },
     "pace": {
         "name": "CESM1 Pacific Pacemaker Ensemble",
         "nameShort": "PACE",
         "variables": {
-            "psl": xr.open_dataset("./data/pace/psl.nc"),
-            "tas": xr.open_dataset("./data/pace/tas.nc"),
-            "u10": xr.open_dataset("./data/pace/u10.nc"),
-            "v10": xr.open_dataset("./data/pace/v10.nc"),
+            "psl": "./data/pace/psl.nc",
+            "tas": "./data/pace/tas.nc",
+            "u10": "./data/pace/u10.nc",
+            "v10": "./data/pace/v10.nc",
         }
     },
     "pace2": {
         "name": "CESM1 Pacific Pacemaker Ensemble 2",
         "nameShort": "PACE 2",
         "variables": {
-            "psl": xr.open_dataset("./data/pace2/psl.nc"),
-            "tas": xr.open_dataset("./data/pace2/tas.nc"),
-            "u10": xr.open_dataset("./data/pace2/u10.nc"),
-            "v10": xr.open_dataset("./data/pace2/v10.nc"),
+            "psl": "./data/pace2/psl.nc",
+            "tas": "./data/pace2/tas.nc",
+            "u10": "./data/pace2/u10.nc",
+            "v10": "./data/pace2/v10.nc",
         }
     }
 }
@@ -120,10 +120,10 @@ instrumental = {
         "timeStart": 1900,
         "timeEnd": 2005,
         "variables": {
-            "psl": xr.open_dataset("./data/era5/psl.nc"),
-            "tas": xr.open_dataset("./data/era5/tas.nc"),
-            "u1000": xr.open_dataset("./data/era5/u1000.nc"),
-            "v10": xr.open_dataset("./data/era5/v10.nc"),
+            "psl": "./data/era5/psl.nc",
+            "tas": "./data/era5/tas.nc",
+            "u1000": "./data/era5/u1000.nc",
+            "v10": "./data/era5/v10.nc",
         }
     }
 }
