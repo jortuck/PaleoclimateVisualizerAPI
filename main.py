@@ -166,8 +166,6 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     era5_variable = variable
     if variable == "us" or variable == "u10":
         era5_variable = "u1000"
-    elif variable == "v10":
-        era5_variable = "v1000"
 
     era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable]+".zarr",engine="zarr")
     time_condition = era5_dataset['time'] <= 2005
