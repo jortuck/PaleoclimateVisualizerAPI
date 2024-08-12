@@ -119,7 +119,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         era5_variable = "u1000"
 
     era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable]+".zarr",engine="zarr")
-    era5_data = era5_dataset.where(era5_dataset['time'] <= 2005, drop=True).sel(lat=lat, lon=lon)
+    era5_data = era5_dataset.sel(lat=lat, lon=lon).where(era5_dataset['time'] <= 2005, drop=True)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
 
