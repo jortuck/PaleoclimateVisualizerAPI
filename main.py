@@ -172,9 +172,8 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     lat_condition = era5_dataset['lat'].isin(lats)
     lon_condition = era5_dataset['lon'].isin(lons)
 
-    # Use the conditions to filter the dataset
-    era5_dataset = (era5_dataset.where(time_condition, drop=True)
-                    .where(lat_condition & lon_condition, drop=True))
+    era5_dataset = era5_dataset.sel(lat=lats, lon=lons, method="nearest").where(time_condition, drop=True)
+
     era5_dataset[era5_variable] = era5_dataset[era5_variable] - np.mean(era5_dataset[era5_variable])
     era5_df = era5_dataset.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
     result.append({
@@ -191,7 +190,7 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
             data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
             r, p_value = pearsonr(data[data['time'] >= 1979][variable].values, era5_df[era5_variable])
             result.append({
-               "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
                 "data": data.values.tolist(),
             })
     return {
