@@ -60,18 +60,19 @@ async def root():
 def calculateTrend(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
                    endYear: int = 2005):
     # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
-    dataset = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr")
+    dataset = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
 
     data = dataset[variable]
     data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
                                                                   drop=True)
+    #data = data.sel(time=np.arange(startYear,endYear+1),drop=True)
+
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
-        degree=1)
-    slope['polyfit_coefficients'] = np.around(slope['polyfit_coefficients'], 6)
-    df = slope.to_dataframe().reset_index().drop(columns=['degree', 'member']);
-    df.rename(columns={'polyfit_coefficients': 'value'}, inplace=True)
-    df["value"] = df["value"] * variables[variable]["multiplier"]
+        degree=1).rename_vars({"polyfit_coefficients":"value"})
+    slope['value'] = np.around(slope['value'], 6) * variables[variable]["multiplier"]
+
+    df = slope.to_dataframe().reset_index().drop(columns=['degree']);
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     bound = absFloorMinimum(np.min(df["value"]), np.max(df["value"]))
     return {"min": -bound,
