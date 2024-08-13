@@ -61,7 +61,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
     data = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
     column = get_first_key(data.keys())
-    data = data.sel(time=np.arange(startYear,endYear+1),drop=True)
+    data = data.sel(time=slice(startYear,endYear),drop=True)
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
         degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
@@ -174,7 +174,7 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
 
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
-            dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr")
+            dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr").squeeze()
             column = get_first_key(dataset.keys())
             data = dataset.where(lat_condition & lon_condition, drop=True)
             data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
