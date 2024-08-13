@@ -3,7 +3,7 @@ import xarray as xr
 variables = {
     "psl":
         {
-            "variable": "psl",
+            "id": "psl",
             "colorMap": "RdBu_r",
             "name": "Mean Sea Level Pressure Anomaly",
             "nameShort": "SLP",
@@ -23,7 +23,7 @@ variables = {
     #     },
     "u10":
         {
-            "variable": "u10",
+            "id": "u10",
             "colorMap": "PuOr_r",
             "name": "Near Surface Zonal Wind Speed Anomaly",
             "nameShort": "U10",
@@ -33,7 +33,7 @@ variables = {
         },
     "v10":
         {
-            "variable": "v10",
+            "id": "v10",
             "colorMap": "PuOr_r",
             "name": "Meridional Wind Speed Anomaly",
             "nameShort": "V10",
@@ -43,7 +43,7 @@ variables = {
         },
     "tas":
         {
-            "variable": "tas",
+            "id": "tas",
             "colorMap": "PiYG_r",
             "name": "Near Surface Air Temperature Anomaly",
             "nameShort": "TAS",
