@@ -1,9 +1,11 @@
 import math
+import typing
+
 from matplotlib import cm
 import numpy as np
 
 
-def absFloorMinimum(x, y):
+def abs_floor_minimum(x, y):
     """
     Takes an x and y value, find the one with the largest absolute value, and returns that value
     floored.
@@ -13,7 +15,7 @@ def absFloorMinimum(x, y):
     return math.floor(math.fabs(x if x > y else y))
 
 
-def toDegreesEast(lon: int):
+def to_degrees_east(lon: int):
     """
     Converts a lon value from -180° E to 180° E, to 0° E to 360° E
     """
@@ -39,7 +41,7 @@ def get_colormap_colors(colormap, num_colors=256):
     return stop_color_pairs
 
 
-def generateColorAxis(colormap_name: str) -> list:
+def generate_color_axis(colormap_name: str) -> list:
     result = list()
     stop_color_values = get_colormap_colors(colormap_name)
     for stop, color in stop_color_values:
@@ -47,3 +49,10 @@ def generateColorAxis(colormap_name: str) -> list:
             int(color[2] * 255)) + ",0.9)"
         result.append([stop, str_color])
     return result
+
+
+def get_first_key(columns):
+    """
+    Returns the element in an iterable.
+    """
+    return next(iter(columns))

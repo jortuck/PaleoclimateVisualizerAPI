@@ -11,16 +11,16 @@ variables = {
             "trendUnit": "hPa/century",
             "annualUnit": "hPa"
         },
-    "us":
-        {
-            "variable": "us",
-            "colorMap": "PuOr_r",
-            "name": "Near Surface Zonal Wind Speed Anomaly",
-            "nameShort": "US",
-            "multiplier": 100,
-            "trendUnit": "m/s/century",
-            "annualUnit": "m/s"
-        },
+    # "us":
+    #     {
+    #         "variable": "us",
+    #         "colorMap": "PuOr_r",
+    #         "name": "Near Surface Zonal Wind Speed Anomaly",
+    #         "nameShort": "US",
+    #         "multiplier": 100,
+    #         "trendUnit": "m/s/century",
+    #         "annualUnit": "m/s"
+    #     },
     "u10":
         {
             "variable": "u10",
@@ -69,7 +69,7 @@ datasets = {
         "variables": {
             "psl": "./data/hadcm3/psl.nc",
             "tas": "./data/hadcm3/tas.nc",
-            "us": "./data/hadcm3/us.nc",
+            "u10": "./data/hadcm3/us.nc",
         }
     },
     "lens": {
@@ -78,7 +78,7 @@ datasets = {
         "variables": {
             "psl": "./data/lens/psl.nc",
             "tas": "./data/lens/tas.nc",
-            "us": "./data/lens/us.nc",
+            "u10": "./data/lens/us.nc",
         }
     },
     "lens2": {
@@ -122,7 +122,7 @@ instrumental = {
         "variables": {
             "psl": "./data/era5/psl.nc",
             "tas": "./data/era5/tas.nc",
-            "u1000": "./data/era5/u1000.nc",
+            "u10": "./data/era5/u1000.nc",
             "v10": "./data/era5/v10.nc",
         }
     }

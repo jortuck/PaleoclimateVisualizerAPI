@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from scipy.stats import pearsonr
-from util import absFloorMinimum, toDegreesEast, generateColorAxis
+from util import abs_floor_minimum, to_degrees_east, generate_color_axis, get_first_key
 from data import variables, datasets, instrumental
 from mangum import Mangum
 import xarray as xr
@@ -40,7 +40,6 @@ async def root():
             "time"].data
         timeStart = int(timeData.min())
         timeEnd = int(timeData.max())
-
         dictionary = {
             "reconstruction": str(key),
             "name": datasets[key]["name"],
@@ -60,27 +59,23 @@ async def root():
 def calculateTrend(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
                    endYear: int = 2005):
     # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
-    dataset = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
-
-    data = dataset[variable]
-    data = data.where(data['time'] >= startYear, drop=True).where(data['time'] <= endYear,
-                                                                  drop=True)
-    #data = data.sel(time=np.arange(startYear,endYear+1),drop=True)
-
+    data = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
+    column = get_first_key(data.keys())
+    data = data.sel(time=np.arange(startYear,endYear+1),drop=True)
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
-        degree=1).rename_vars({"polyfit_coefficients":"value"})
-    slope['value'] = np.around(slope['value'], 6) * variables[variable]["multiplier"]
+        degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
+    slope['value'] = np.around(slope['value'], 6) * variables[column]["multiplier"]
 
     df = slope.to_dataframe().reset_index().drop(columns=['degree']);
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
-    bound = absFloorMinimum(np.min(df["value"]), np.max(df["value"]))
+    bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
     return {"min": -bound,
             "max": bound,
             "variable": variables[variable]["trendUnit"],
             "name": datasets[reconstruction][
                         "nameShort"] + f' Reconstruction Trend {startYear}-{endYear}',
-            "colorMap": generateColorAxis(variables.get(variable)["colorMap"]),
+            "colorMap": generate_color_axis(variables.get(variable)["colorMap"]),
             "lats": list(df['lat']),
             "lons": list(df['lon']),
             "values": list(df['value'])}
@@ -94,15 +89,16 @@ async def values(reconstruction: str, variable: str, year: int):
 
     dataset = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr")
     data = dataset.sel(time=year)
-    data[variable] = np.around(data[variable].astype('float64'), 6)
+    column = get_first_key(dataset.keys())
+    data[column] = np.around(data[column].astype('float64'), 6)
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
-    df.rename(columns={variable: 'value'}, inplace=True)
+    df.rename(columns={column: 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
-            "variable": variables[variable]["annualUnit"],
+            "variable": variables[column]["annualUnit"],
             "name": datasets[reconstruction]["nameShort"] + " Reconstruction " + str(year),
-            "colorMap": generateColorAxis(variables.get(variable)["colorMap"]),
+            "colorMap": generate_color_axis(variables.get(column)["colorMap"]),
             "lats": list(df['lat']),
             "lons": list(df["lon"]),
             "values": list(df["value"])}
@@ -113,13 +109,10 @@ async def values(reconstruction: str, variable: str, year: int):
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
-    lon = toDegreesEast(lon)
+    lon = to_degrees_east(lon)
 
-    era5_variable = variable
-    if variable == "us" or variable == "u10":
-        era5_variable = "u1000"
-
-    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable]+".zarr",engine="zarr")
+    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][variable]+".zarr",engine="zarr")
+    era5_variable = get_first_key(era5_dataset.keys())
     era5_data = era5_dataset.sel(lat=lat, lon=lon).where(era5_dataset['time'] <= 2005, drop=True)
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
@@ -135,12 +128,13 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
         if variable in datasets[k]["variables"]:
             dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr")
             dataset = dataset.squeeze()
+            column = get_first_key(dataset.keys())
             data = dataset.sel(lat=lat, lon=lon, method='nearest')
             df = data.to_dataframe().reset_index()
             df = df.drop(columns=['lat', 'lon'])
             allValues = df.values.tolist()
             df = df[df["time"] >= np.min(era5_df["time"])]
-            r, p_value = pearsonr(df[variable], era5_df[era5_variable])
+            r, p_value = pearsonr(df[column], era5_df[era5_variable])
             result.append({
                 "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
                 "data": allValues,
@@ -155,8 +149,8 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     result = []
     lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
-    start = toDegreesEast(start)
-    stop = toDegreesEast(stop)
+    start = to_degrees_east(start)
+    stop = to_degrees_east(stop)
     if start < stop:
         lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
     elif start == stop:
@@ -164,17 +158,12 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     else:
         lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
 
-    era5_variable = variable
-    if variable == "us" or variable == "u10":
-        era5_variable = "u1000"
-
-    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][era5_variable]+".zarr",engine="zarr")
+    era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][variable]+".zarr",engine="zarr")
+    era5_variable = get_first_key(era5_dataset.keys())
     time_condition = era5_dataset['time'] <= 2005
     lat_condition = era5_dataset['lat'].isin(lats)
     lon_condition = era5_dataset['lon'].isin(lons)
-
     era5_dataset = era5_dataset.sel(lat=lats, lon=lons, method="nearest").where(time_condition, drop=True)
-
     era5_dataset[era5_variable] = era5_dataset[era5_variable] - np.mean(era5_dataset[era5_variable])
     era5_df = era5_dataset.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
     result.append({
@@ -186,10 +175,10 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     for k in datasets.keys():
         if variable in datasets[k]["variables"]:
             dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr")
-            dataset = dataset.squeeze()
+            column = get_first_key(dataset.keys())
             data = dataset.where(lat_condition & lon_condition, drop=True)
             data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
-            r, p_value = pearsonr(data[data['time'] >= 1979][variable].values, era5_df[era5_variable])
+            r, p_value = pearsonr(data[data['time'] >= 1979][column].values, era5_df[era5_variable])
             result.append({
                 "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
                 "data": data.values.tolist(),

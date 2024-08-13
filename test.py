@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from scipy.stats import pearsonr
-from util import absFloorMinimum, toDegreesEast, generateColorAxis
+from util import abs_floor_minimum, to_degrees_east, generate_color_axis
 from data import variables, datasets, instrumental
 from mangum import Mangum
 import xarray as xr
@@ -13,8 +13,8 @@ import polars as pl
 def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     result = []
     lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
-    start = toDegreesEast(start)
-    stop = toDegreesEast(stop)
+    start = to_degrees_east(start)
+    stop = to_degrees_east(stop)
     if start < stop:
         lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
     elif start == stop:
