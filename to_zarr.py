@@ -3,8 +3,8 @@ import xarray as xr
 for key in datasets.keys():
     for set in datasets[key]["variables"].values():
         dataset = xr.open_dataset(set)
-        dataset.to_zarr(set+".zarr")
+        dataset.to_zarr(set+".zarr", mode="w")
 for key in instrumental.keys():
     for set in instrumental[key]["variables"].values():
         dataset = xr.open_dataset(set)
-        dataset.to_zarr(set+".zarr")
+        dataset.to_zarr(set+".zarr",mode="w")

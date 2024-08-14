@@ -157,7 +157,6 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
         lons = np.array([start])
     else:
         lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
-
     era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][variable]+".zarr",engine="zarr")
     era5_variable = get_first_key(era5_dataset.keys())
     time_condition = era5_dataset['time'] <= 2005
