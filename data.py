@@ -34,7 +34,7 @@ variables = {
     "v10":
         {
             "id": "v10",
-            "colorMap": "PuOr_r",
+            "colorMap": "BrBG_r",
             "name": "Meridional Wind Speed Anomaly",
             "nameShort": "V10",
             "multiplier": 100,

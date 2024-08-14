@@ -1,3 +1,6 @@
 .idea
 data
 *.dat
+.venv
+.DS_Store
+__pycache__
