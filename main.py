@@ -12,7 +12,8 @@ app = FastAPI()
 # add origins for cors
 origins = [
     "http://localhost:5173",
-    "https://pv.jortuck.com"
+    "https://pv.jortuck.com",
+    "https://jortuck.github.io"
 ]
 
 app.add_middleware(
@@ -189,3 +190,4 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
 
 
 handler = Mangum(app=app)
+# docker build -t pvapi -f AWS.dockerfile .
