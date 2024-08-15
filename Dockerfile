@@ -1,12 +1,13 @@
-FROM python:3.10
-WORKDIR /code
-COPY ./requirements.txt /code/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
-COPY ./main.py /code/
-COPY ./util.py /code/
-COPY ./data.py /code/
-COPY ./data /code/data
-CMD ["fastapi", "run", "main.py", "--port", "80", "--proxy-headers"]
-
-# If running behind a proxy like Nginx or Traefik add --proxy-headers
-# CMD ["fastapi", "run", "app/main.py", "--port", "80", "--proxy-headers"]
+FROM public.ecr.aws/lambda/python:3.12
+ENV MPLCONFIGDIR=/tmp/matplotlib
+RUN mkdir -p /tmp/matplotlib && chmod -R 777 /tmp/matplotlib
+WORKDIR ${LAMBDA_TASK_ROOT}
+RUN microdnf install gcc gcc-c++ make -y
+COPY ./requirements.txt /requirements.txt
+RUN pip install awslambdaric setuptools
+RUN pip install --no-cache-dir --upgrade -r /requirements.txt
+COPY ./main.py ./
+COPY ./util.py ./
+COPY ./data.py ./
+COPY ./data ./data
+CMD [ "main.handler" ]
