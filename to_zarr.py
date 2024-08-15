@@ -1,3 +1,4 @@
+# This file loops over all the datasets defined in data.py, then converts them to zarr.
 from data import datasets, instrumental
 import xarray as xr
 for key in datasets.keys():
