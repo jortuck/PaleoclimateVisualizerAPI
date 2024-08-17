@@ -66,7 +66,7 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     trends = data.polyfit(dim='time', deg=1)
     slope = trends.sel(
         degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
-    slope['value'] = np.around(slope['value'], 6) * variables[column]["multiplier"]
+    slope['value'] = np.around(slope['value'], 6) * variables[variable]["multiplier"]
 
     df = slope.to_dataframe().reset_index().drop(columns=['degree']);
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
