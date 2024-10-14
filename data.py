@@ -82,7 +82,7 @@ datasets = {
         }
     },
     "lens2": {
-        "name": "CESM1 Large Ensemble 2",
+        "name": "CESM2 Large Ensemble",
         "nameShort": "LENS 2",
         "variables": {
             "psl": "./data/lens2/psl.nc",
@@ -102,7 +102,7 @@ datasets = {
         }
     },
     "pace2": {
-        "name": "CESM1 Pacific Pacemaker Ensemble 2",
+        "name": "CESM2 Pacific Pacemaker Ensemble",
         "nameShort": "PACE 2",
         "variables": {
             "psl": "./data/pace2/psl.nc",
