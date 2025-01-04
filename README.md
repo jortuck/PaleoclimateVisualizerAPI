@@ -51,8 +51,7 @@ deployed to Lambda.
     should not exceed the free tier of AWS Lambda, but again, have a budget alert set just in
     case.
 > - Due to the nature of AWS Lambda, cold stars may occur if the API has not been used in some time.
-    This could result
-    > in requests taking up to 60 seconds, however the time should reduce once the function is warm.
+    This could result in requests taking up to 60 seconds, however the time should reduce once the function is warm.
 
 #### Creating & Uploading To The Container Repository
 
