@@ -52,6 +52,9 @@ deployed to Lambda.
     case.
 > - Due to the nature of AWS Lambda, cold stars may occur if the API has not been used in some time.
     This could result in requests taking up to 60 seconds, however the time should reduce once the function is warm.
+> - These instructions assume you already have some basic knowledge of how AWS works. In order to continue,
+>   have the [AWS CLI](https://aws.amazon.com/cli/) installed on your local machine, and it must be 
+>   authenticated with the following permissions: `AmazonEC2FullAccess` and `AmazonEC2ContainerRegistryFullAccess`.
 
 #### Creating & Uploading To The Container Repository
 
