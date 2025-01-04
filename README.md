@@ -45,10 +45,10 @@ deployed to Lambda.
 
 > [!NOTE]
 > - Amazon charges for the storage used in AWS ECR. It should only be
-    around \$0.30 per month, but I would
-    > recommend setting a budget alert of \$5.00 incase a misconfiguration causes a spike in price.
+    around \$0.30 per month, but I would 
+    recommend setting a budget alert of \$5.00 incase a misconfiguration causes a spike in price.
     The API itself
-    > should not exceed the free tier of AWS Lambda, but again, have a budget alert set just in
+    should not exceed the free tier of AWS Lambda, but again, have a budget alert set just in
     case.
 > - Due to the nature of AWS Lambda, cold stars may occur if the API has not been used in some time.
     This could result
