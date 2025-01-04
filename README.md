@@ -55,12 +55,20 @@ deployed to Lambda.
 > - These instructions assume you already have some basic knowledge of how AWS works. In order to continue,
 >   you must have the [AWS CLI](https://aws.amazon.com/cli/) installed on your local machine, and it must be 
 >   authenticated with the following permissions: `AmazonEC2FullAccess` and `AmazonEC2ContainerRegistryFullAccess`.
+> - You must have [Docker](https://www.docker.com/) installed on your machine to run this deployment.
 
 #### Creating & Uploading To The Container Repository
 1. Head to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories) on AWS.
-Make sure your current region is set to the one you intend to deploy your Lambda function in.
+**Make sure your current region is set to the one you intend to deploy your Lambda function in.**
 2. Click "Create" or "Create Repository". Make sure you are creating a private repository. You may
 name the repository whatever you want and keep the standard encryption settings.
-3. 
+3. Return to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories), select
+the repository you just created, click actions in the top right, and select "Lifecycle Policies".
+4. In the lifecycle policies page, click "Create Rule", give it a priority 1, a description of "delete old images"
+and set the "Image Status" to "Any". Under "Match criteria", specify "Image count more than" and set the number to 1.
+The rule action should automatically be set to "expire". Click "Save" and return back to your repositories page.
+    - The purpose of this rule is to automatically delete old versions of the image in your registry when new versions are pushed.
+   This will save you money by reducing the amount of storage your images take up. In addition, for this project it is not useful 
+   to have several versions of the image available other than the latest.
 
 
