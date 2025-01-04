@@ -57,5 +57,10 @@ deployed to Lambda.
 >   authenticated with the following permissions: `AmazonEC2FullAccess` and `AmazonEC2ContainerRegistryFullAccess`.
 
 #### Creating & Uploading To The Container Repository
+1. Head to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories) on AWS.
+Make sure your current region is set to the one you intend to deploy your Lambda function in.
+2. Click "Create" or "Create Repository". Make sure you are creating a private repository. You may
+name the repository whatever you want and keep the standard encryption settings.
+3. 
 
 
