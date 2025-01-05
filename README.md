@@ -56,7 +56,8 @@ deployed to Lambda.
 > - You must have [Docker](https://www.docker.com/) installed on your machine to run this deployment.
 
 <details>
-<summary>**Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.**</summary>
+<summary>Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.</summary>
+
 This is a dropdown with text!
 1. Head to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories) on AWS.
 2. On your repositories page, select the repository you have a created for the API, and click "View Push Commands".
