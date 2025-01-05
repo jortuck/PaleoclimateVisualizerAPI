@@ -70,5 +70,24 @@ The rule action should automatically be set to "expire". Click "Save" and return
     - The purpose of this rule is to automatically delete old versions of the image in your registry when new versions are pushed.
    This will save you money by reducing the amount of storage your images take up. In addition, for this project it is not useful 
    to have several versions of the image available other than the latest.
+5. On your repositories page, select the repository you have a created for the API, and click "View Push Commands".
+Rune those four commands in order, in the project directory, to push it to your repository. If this is not working for you,
+please make sure you have the pre-requisites listed in the note above. 
+ - Depending on your internet speed, the upload could take up to fifteen minutes. After you run those four commands,
+the image should be successfully uploaded given you did not receive any errors.
+
+#### Deploying To Lambda
+1. Go to your [AWS Lambda](https://console.aws.amazon.com/lambda/home) dashboard. **Make sure you are in
+the same region your container was deployed in**. 
+2. Click "Create Function", and select "Container Image".
+3. Name your function whatever you want, and click "Browse Images". At the top, if you click "Select Repository",
+you should see the ones you just created from the previous instructions. Select that repository and select the top 
+image with the tag "latest". Make sure the "Architecture" is set to "x86_64" and click "Create Function".
+4. Once your function is created, click on it and select the "Configuration" tab. 
+    - Under "General Configuration", click "Edit", and set the "Memory" to 4128 (or the highest allowed for your AWS account)
+and set "Timeout" to one minute (this will allow for better cold starts). Then click "Save" at the bottom.
+    - Under "Function URL", click "Create Function URL", set the "Auth type" to "NONE", then click save. You can now use
+that URL to access the API.
+
 
 
