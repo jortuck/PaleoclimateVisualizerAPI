@@ -56,8 +56,17 @@ deployed to Lambda.
 > - You must have [Docker](https://www.docker.com/) installed on your machine to run this deployment.
 
 <details>
-<summary>Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.</summary>
+<summary>**Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.**</summary>
 This is a dropdown with text!
+1. Head to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories) on AWS.
+2. On your repositories page, select the repository you have a created for the API, and click "View Push Commands".
+Rune those four commands in order, in the project directory, to push it to your repository. If this is not working for you,
+please make sure you have the pre-requisites listed in the note above. 
+    - Depending on your internet speed, the upload could take up to fifteen minutes. After you run those four commands,
+the image should be successfully uploaded given you did not receive any errors.
+3. Go to your [AWS Lambda](https://console.aws.amazon.com/lambda/home) dashboard and open your function.
+4. Underneath the "Image" tab, click the button that says "Deploy New Image", then click "Browse Images", then select
+the latest one from your repository. Click "Save" and it should automatically update the function. 
 </details>
 
 #### Creating & Uploading To The Container Repository
