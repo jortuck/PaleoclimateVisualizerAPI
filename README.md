@@ -35,8 +35,6 @@ You must have Git and Python installed to run this project locally.
 
 ## Deployment
 
-### VPS Or Other Private Server
-
 ### AWS Lambda
 
 Due to the size of the data, the API cannot be deployed as a standard Lambda microservice. Instead,
@@ -81,7 +79,7 @@ the image should be successfully uploaded given you did not receive any errors.
 the same region your container was deployed in**. 
 2. Click "Create Function", and select "Container Image".
 3. Name your function whatever you want, and click "Browse Images". At the top, if you click "Select Repository",
-you should see the ones you just created from the previous instructions. Select that repository and select the top 
+you should see the one you just created from the previous instructions. Select that repository and select the top 
 image with the tag "latest". Make sure the "Architecture" is set to "x86_64" and click "Create Function".
 4. Once your function is created, click on it and select the "Configuration" tab. 
     - Under "General Configuration", click "Edit", and set the "Memory" to 4128 (or the highest allowed for your AWS account)
