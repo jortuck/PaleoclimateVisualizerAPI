@@ -55,6 +55,11 @@ deployed to Lambda.
 >   authenticated with the following permissions: `AmazonEC2FullAccess` and `AmazonEC2ContainerRegistryFullAccess`.
 > - You must have [Docker](https://www.docker.com/) installed on your machine to run this deployment.
 
+<details>
+<summary>Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.</summary>
+This is a dropdown with text!
+</details>
+
 #### Creating & Uploading To The Container Repository
 1. Head to the [Elastic Container Registry](https://console.aws.amazon.com/ecr/private-registry/repositories) on AWS.
 **Make sure your current region is set to the one you intend to deploy your Lambda function in.**
