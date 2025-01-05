@@ -59,7 +59,13 @@ async def root():
 @app.get("/trends/{reconstruction}/{variable}")
 def calculateTrend(reconstruction: str, variable: str, response: Response, startYear: int = 1900,
                    endYear: int = 2005):
-    # response.headers["Content-Disposition"] = 'attachment; filename="filename.json"'
+    # Check to make sure it's a valid reconstruction
+    if not datasets.keys().__contains__(reconstruction):
+        raise HTTPException(status_code=404, detail=f'Reconstruction {reconstruction} not found')
+    # Check to make sure variable exists on reconstruction
+    if not datasets.keys().__contains__(reconstruction):
+        raise HTTPException(status_code=404, detail=f'Reconstruction {reconstruction} not found')
+
     data = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
     column = get_first_key(data.keys())
     data = data.sel(time=slice(startYear,endYear),drop=True)
