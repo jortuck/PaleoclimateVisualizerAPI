@@ -63,8 +63,8 @@ def calculateTrend(reconstruction: str, variable: str, response: Response, start
     if not datasets.keys().__contains__(reconstruction):
         raise HTTPException(status_code=404, detail=f'Reconstruction {reconstruction} not found')
     # Check to make sure variable exists on reconstruction
-    if not datasets.keys().__contains__(reconstruction):
-        raise HTTPException(status_code=404, detail=f'Reconstruction {reconstruction} not found')
+    if not datasets[reconstruction]["variables"].__contains__(variable):
+        raise HTTPException(status_code=404, detail=f'Variable {variable} not found')
 
     data = xr.open_dataset(datasets[reconstruction]["variables"][variable]+".zarr",engine="zarr").squeeze()
     column = get_first_key(data.keys())
