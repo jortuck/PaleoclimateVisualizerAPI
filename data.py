@@ -1,4 +1,17 @@
 import xarray as xr
+from fastapi import  HTTPException
+
+def validate(dataset:str, variable:str):
+    # Check to make sure it's a valid reconstruction
+    if not datasets.keys().__contains__(dataset):
+        raise HTTPException(status_code=404, detail=f'Reconstruction {dataset} not found')
+    # Check to make sure variable exists on reconstruction
+    if not datasets[dataset]["variables"].__contains__(variable):
+        raise HTTPException(status_code=404, detail=f'Variable {variable} not found')
+
+
+
+
 
 variables = {
     "psl":
