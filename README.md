@@ -54,6 +54,8 @@ deployed to Lambda.
 >   you must have the [AWS CLI](https://aws.amazon.com/cli/) installed on your local machine, and it must be 
 >   authenticated with the following permissions: `AmazonEC2FullAccess` and `AmazonEC2ContainerRegistryFullAccess`.
 > - You must have [Docker](https://www.docker.com/) installed on your machine to run this deployment.
+> - I recommend putting your Lambda URL behind a [Cloudfront](https://aws.amazon.com/cloudfront/) distribution. 
+> This will allow the API responses to be cached and served faster from Amazons global CDN, as well saving your function from needless executions! 
 
 <details>
 <summary>Already deployed this project before? Click here for instructions on how to update your existing repository and Lambda function.</summary>
