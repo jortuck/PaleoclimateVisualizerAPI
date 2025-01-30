@@ -21,14 +21,14 @@ app.add_middleware(
     allow_origins=origins,
     allow_methods=["GET"],
     allow_headers=["*"],
-    max_age=259200
+    max_age=600
 )
 
 
 @app.middleware("http")
 async def cache(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Cache-Control"] = "public, max-age=14400"
+    response.headers["Cache-Control"] = "public, max-age=259200"
     return response
 
 
