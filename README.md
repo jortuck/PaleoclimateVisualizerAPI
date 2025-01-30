@@ -1,3 +1,6 @@
+[![Front End Status](https://status.jortuck.com/api/badge/7/status?style=for-the-badge)](https://status.jortuck.com/status/pv)
+
+
 # About
 
 This is the backend API for [Paleocliamte Visualizer](https://pv.jortuck.com).
