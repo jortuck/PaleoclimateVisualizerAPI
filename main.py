@@ -21,7 +21,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_methods=["GET"],
     allow_headers=["*"],
-    max_age=600
+    max_age=259200
 )
 
 
