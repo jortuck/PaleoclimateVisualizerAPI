@@ -28,9 +28,15 @@ app.add_middleware(
 @app.middleware("http")
 async def cache(request: Request, call_next):
     response = await call_next(request)
+    if request.url.path == "/health" and request.method == "GET":
+        return response
     response.headers["Cache-Control"] = "public, max-age=259200"
     return response
 
+# Simple end point for checking if the server is up.
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 # root shows possible data sets
 @app.get("/")
