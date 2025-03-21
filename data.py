@@ -22,7 +22,7 @@ variables = {
             "nameShort": "SLP",
             "multiplier": 1,
             "trendUnit": "hPa/century",
-            "annualUnit": "hPa"
+            "annualUnit": "Pa"
         },
     # "us":
     #     {
