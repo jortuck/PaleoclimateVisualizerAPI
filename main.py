@@ -107,6 +107,8 @@ async def values(reconstruction: str, variable: str, year: int):
     df = data.to_dataframe().reset_index().drop(columns=['member', 'time']);
     df.rename(columns={column: 'value'}, inplace=True)
     df["lon"] = (df["lon"] + 180) % 360 - 180  # convert 0-360 to -180-180
+    if variable == "psl":
+        df["value"]= df["value"] / 100
     return {"min": np.min(df["value"]),
             "max": np.max(df["value"]),
             "variable": variables[column]["annualUnit"],
@@ -122,6 +124,7 @@ async def values(reconstruction: str, variable: str, year: int):
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
                      lon: Annotated[int, Path(le=180, ge=-180)]):
     result = []
+
     lon = to_degrees_east(lon)
 
     era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][variable]+".zarr",engine="zarr")
@@ -130,7 +133,11 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
 
+    if variable == "psl":
+        era5_df[era5_variable] = era5_df[era5_variable]/100
+
     era5_df[era5_variable] = era5_df[era5_variable] - np.mean(era5_df[era5_variable])
+
     result.append({
         "name": instrumental["era5"]["name"],
         "dashStyle": 'Dash',
@@ -145,9 +152,16 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
             data = dataset.sel(lat=lat, lon=lon, method='nearest')
             df = data.to_dataframe().reset_index()
             df = df.drop(columns=['lat', 'lon'])
+
+            if variable == "psl":
+                df[column] = df[column] / 100
+
             allValues = df.values.tolist()
             df = df[df["time"] >= np.min(era5_df["time"])]
             r, p_value = pearsonr(df[column], era5_df[era5_variable])
+
+
+
             result.append({
                 "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
                 "data": allValues,
