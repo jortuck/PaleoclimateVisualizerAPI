@@ -122,14 +122,14 @@ async def values(reconstruction: str, variable: str, year: int):
 # Assumes lon is -180 to 180, returns a time series for all reconstructions
 @app.get("/timeseries/{variable}/{lat}/{lon}")
 async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
-                     lon: Annotated[int, Path(le=180, ge=-180)]):
+                     lon: Annotated[int, Path(le=180, ge=-180)],time_start: int = 1800, time_end: int = 2005):
     result = []
 
     lon = to_degrees_east(lon)
 
     era5_dataset = xr.open_dataset(instrumental["era5"]["variables"][variable]+".zarr",engine="zarr")
     era5_variable = get_first_key(era5_dataset.keys())
-    era5_data = era5_dataset.sel(lat=lat, lon=lon).where(era5_dataset['time'] <= 2005, drop=True)
+    era5_data = era5_dataset.sel(lat=lat, lon=lon).sel(time=slice(time_start, time_end))
     era5_df = era5_data.to_dataframe().reset_index()
     era5_df = era5_df.drop(columns=['lat', 'lon'])
 
@@ -149,7 +149,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
             dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr")
             dataset = dataset.squeeze()
             column = get_first_key(dataset.keys())
-            data = dataset.sel(lat=lat, lon=lon, method='nearest')
+            data = dataset.sel(lat=lat, lon=lon, method='nearest').sel(time=slice(time_start, time_end))
             df = data.to_dataframe().reset_index()
             df = df.drop(columns=['lat', 'lon'])
 
@@ -158,12 +158,20 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 
             allValues = df.values.tolist()
             df = df[df["time"] >= np.min(era5_df["time"])]
-            r, p_value = pearsonr(df[column], era5_df[era5_variable])
+
+            x = df[column].dropna()
+            y = era5_df[era5_variable].dropna()
+            if len(x) >= 2 and len(y) >= 2:
+                r, p_value = pearsonr(x, y)
+                r = np.around(r, 2)
+                p_value = np.around(p_value, 4)
+            else:
+                r, p_value = "None", "None"
 
 
 
             result.append({
-                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "name": f'{datasets[k]["name"]}, r={r}, p_value={p_value}',
                 "data": allValues,
             })
     return {
@@ -173,7 +181,7 @@ async def timeseries(variable: str, lat: Annotated[int, Path(le=90, ge=-90)],
 
 
 @app.get("/timeseries/{variable}/{n}/{s}/{start}/{stop}")
-async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
+async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int, time_start: int = 1800, time_end: int = 2005):
     result = []
     lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
     start = to_degrees_east(start)
@@ -189,7 +197,7 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
     time_condition = era5_dataset['time'] <= 2005
     lat_condition = era5_dataset['lat'].isin(lats)
     lon_condition = era5_dataset['lon'].isin(lons)
-    era5_dataset = era5_dataset.sel(lat=lats, lon=lons, method="nearest").where(time_condition, drop=True)
+    era5_dataset = era5_dataset.sel(lat=lats, lon=lons, method="nearest").sel(time=slice(time_start, time_end))
     era5_dataset[era5_variable] = era5_dataset[era5_variable] - np.mean(era5_dataset[era5_variable])
     era5_df = era5_dataset.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
     result.append({
@@ -202,11 +210,23 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int):
         if variable in datasets[k]["variables"]:
             dataset = xr.open_dataset(datasets[k]["variables"][variable]+".zarr",engine="zarr").squeeze()
             column = get_first_key(dataset.keys())
-            data = dataset.where(lat_condition & lon_condition, drop=True)
+            data = dataset.where(lat_condition & lon_condition, drop=True).sel(time=slice(time_start, time_end))
             data = data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
-            r, p_value = pearsonr(data[data['time'] >= 1979][column].values, era5_df[era5_variable])
+
+            x = data[data['time'] >= 1979][column].dropna().values
+            y = era5_df[era5_variable].dropna().values
+
+            if len(x) >= 2 and len(y) >= 2:
+                r, p_value = pearsonr(x, y)
+                r = np.around(r, 2)
+                p_value = np.around(p_value, 4)
+            else:
+                r, p_value = "None", "None"
+
+
+
             result.append({
-                "name": f'{datasets[k]["name"]}, r={np.around(r, 2)}, p_value={np.around(p_value, 6)}',
+                "name": f'{datasets[k]["name"]}, r={r}, p_value={p_value}',
                 "data": data.values.tolist(),
             })
     return {

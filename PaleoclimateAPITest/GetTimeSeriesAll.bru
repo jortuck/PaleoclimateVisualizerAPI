@@ -5,7 +5,12 @@ meta {
 }
 
 get {
-  url: http://localhost:8000/timeseries/v10/90/160
+  url: http://localhost:8000/timeseries/psl/90/160?start=2000&end=2001
   body: none
   auth: none
+}
+
+params:query {
+  start: 2000
+  end: 2001
 }
