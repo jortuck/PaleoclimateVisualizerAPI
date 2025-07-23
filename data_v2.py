@@ -55,6 +55,9 @@ class VariableMetadata:
     multiplier: float
     trendUnit: str
     annualUnit: str
+    dataset_count: int = 0
     datasets: List[DatasetIndividual] = field(default_factory=list)  # Empty list by default
     def as_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        data["dataset_count"] = self.dataset_count
+        return data
