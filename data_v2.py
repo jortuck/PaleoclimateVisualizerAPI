@@ -12,10 +12,11 @@ class Dataset:
     id: str
     name: str
     nameShort: str
-    timeStart: Optional[int]
-    timeEnd: Optional[int]
+
     variables: Dict[str, str]  # variable_id -> file path
     type: DatasetType = DatasetType.DEFAULT
+    timeStart: Optional[int] = 0
+    timeEnd: Optional[int] = 0
     def as_dict(self):
         return {
             "id": self.id,
@@ -55,9 +56,7 @@ class VariableMetadata:
     multiplier: float
     trendUnit: str
     annualUnit: str
-    dataset_count: int = 0
-    datasets: List[DatasetIndividual] = field(default_factory=list)  # Empty list by default
+    datasets: List[str] = field(default_factory=list)  # Empty list by default
     def as_dict(self) -> dict:
         data = asdict(self)
-        data["dataset_count"] = self.dataset_count
         return data

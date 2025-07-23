@@ -37,8 +37,7 @@ def startup():
                 "time"].data
             dataset.timeStart = int(timeData.min())
             dataset.timeEnd = int(timeData.max())
-            variables[variable_id].datasets.append(dataset.as_one(variable_id))
-            variables[variable_id].dataset_count += 1
+            variables[variable_id].datasets.append(dataset.id)
 
 startup()
 
@@ -63,24 +62,24 @@ async def root():
 # Get a list of all variables available
 @app.get("/variables")
 async def get_variables():
+
     # when getting variables, drop datasets key as it is not need for this view
-    return [
-        {k: v for k, v in var.as_dict().items() if k != "datasets"}
-        for var in variables.values()
-    ]
+    return {
+        "variables":list(variables.values()),
+        "datasets":list(datasets.values()),
+    }
 
 # Get a specific variable and available datasets for that variable.
 @app.get("/variables/{id}")
 async def get_variables(id: str):
-    time.sleep(2)
     if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
         return variables[id]
-    raise  HTTPException(status_code=404, detail="Variable not found")
+    raise  HTTPException(status_code=404, detail="Variable not found.")
 
 
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
-async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = 0, download: bool = False):
+async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download: bool = False):
     if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
         lon = to_degrees_east(lon)
         variable = variables[id]
@@ -109,7 +108,6 @@ async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0,
                 "name": dataset.name,
                 "data": reconstruction.values.tolist(),
             })
-
         return {
             "name": f'Time Series For ({lat},{(lon + 180) % 360 - 180})',
             "values": result

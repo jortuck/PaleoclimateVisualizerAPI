@@ -54,8 +54,7 @@ datasets: Dict[str, Dataset] = {
             "u10": "./data/cesm/u10.nc",
             "v10": "./data/cesm/v10.nc",
         },
-        timeStart=1800,
-        timeEnd=2005
+
     ),
     "hadcm3": Dataset(
         id="hadcm3",
@@ -66,8 +65,7 @@ datasets: Dict[str, Dataset] = {
             "tas": "./data/hadcm3/tas.nc",
             "u10": "./data/hadcm3/us.nc",
         },
-        timeStart=1900,
-        timeEnd=2005
+
     ),
     "lens": Dataset(
         id="lens",
@@ -78,8 +76,6 @@ datasets: Dict[str, Dataset] = {
             "tas": "./data/lens/tas.nc",
             "u10": "./data/lens/us.nc",
         },
-        timeStart=1900,
-        timeEnd=2005
     ),
     "lens2": Dataset(
         id="lens2",
@@ -91,8 +87,6 @@ datasets: Dict[str, Dataset] = {
             "u10": "./data/lens2/u10.nc",
             "v10": "./data/lens2/v10.nc",
         },
-        timeStart=1850,
-        timeEnd=2005
     ),
     "pace": Dataset(
         id="pace",
@@ -104,8 +98,6 @@ datasets: Dict[str, Dataset] = {
             "u10": "./data/pace/u10.nc",
             "v10": "./data/pace/v10.nc",
         },
-        timeStart=1900,
-        timeEnd=2005
     ),
     "pace2": Dataset(
         id="pace2",
@@ -117,8 +109,6 @@ datasets: Dict[str, Dataset] = {
             "u10": "./data/pace2/u10.nc",
             "v10": "./data/pace2/v10.nc",
         },
-        timeStart=1850,
-        timeEnd=2005
     )
 }
 
