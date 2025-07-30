@@ -12,7 +12,8 @@ variables: Dict[str, VariableMetadata] = {
         colorMap="RdBu_r",
         multiplier=1,
         trendUnit="hPa/century",
-        annualUnit="hPa"
+        annualUnit="hPa",
+        transform_timeseries=lambda value: value / 100
     ),
     "u10": VariableMetadata(
         id="u10",
@@ -21,7 +22,8 @@ variables: Dict[str, VariableMetadata] = {
         colorMap="PuOr_r",
         multiplier=100,
         trendUnit="m/s/century",
-        annualUnit="m/s"
+        annualUnit="m/s",
+
     ),
     "v10": VariableMetadata(
         id="v10",

@@ -62,7 +62,7 @@ async def root():
 # Get a list of all variables available
 @app.get("/variables")
 async def get_variables():
-
+    # time.sleep(2)
     # when getting variables, drop datasets key as it is not need for this view
     return {
         "variables":list(variables.values()),
@@ -79,7 +79,7 @@ async def get_variables(id: str):
 
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
-async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download: bool = False):
+async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download: bool = False):
     if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
         lon = to_degrees_east(lon)
         variable = variables[id]
@@ -88,10 +88,18 @@ async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0,
         # TO-DO: make work for rare cases where there is no instrumental data for variable
         instrumental_data = xr.open_dataset(instrumental.variables[id]+".zarr", engine="zarr")
         instrumental_data = instrumental_data.sel(lat=lat, lon=lon, method="nearest")
+
+        # select time range if specified
+        if startYear is not None and endYear is not None:
+            instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
+
         instrumental_variable = get_first_key(instrumental_data.keys())
         instrumental_data = instrumental_data.to_dataframe().reset_index()
         instrumental_data = instrumental_data.drop(columns=['lat', 'lon'])
         instrumental_data[instrumental_variable] = instrumental_data[instrumental_variable] - np.mean(instrumental_data[instrumental_variable])
+
+        if variable.transform_timeseries:
+            instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
 
         result.append({
             "name": instrumental.name,
@@ -100,10 +108,20 @@ async def get_variables(id: str, lat: Annotated[int, Query(le=90, ge=-90)]  = 0,
         })
 
         for dataset in variable.datasets:
-            reconstruction = xr.open_dataset(dataset.path+".zarr", engine="zarr")
+            dataset = datasets[dataset]
+            reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
+
+            if startYear is not None and endYear is not None:
+                reconstruction = reconstruction.sel(time=slice(startYear, endYear))
+
+            dataset_var = get_first_key(reconstruction.keys())
             reconstruction = reconstruction.sel(lat=lat,lon=lon,method="nearest")
             reconstruction = reconstruction.to_dataframe().reset_index()
-            reconstruction = reconstruction[['time', variable.id]]
+            reconstruction = reconstruction[['time', dataset_var]]
+
+            if variable.transform_timeseries:
+                reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
+
             result.append({
                 "name": dataset.name,
                 "data": reconstruction.values.tolist(),

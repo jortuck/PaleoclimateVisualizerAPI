@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Dict, Optional, Literal, List
+from typing import Dict, Optional, Literal, List, Callable
 
 
 class DatasetType(str, Enum):
@@ -57,6 +57,8 @@ class VariableMetadata:
     trendUnit: str
     annualUnit: str
     datasets: List[str] = field(default_factory=list)  # Empty list by default
+    transform_timeseries: Optional[Callable[[float], float]] = None # optional function if values need to be transformed for timeseries representation
     def as_dict(self) -> dict:
         data = asdict(self)
+        data.pop("transform_timeseries",None)
         return data
