@@ -58,7 +58,9 @@ class VariableMetadata:
     annualUnit: str
     datasets: List[str] = field(default_factory=list)  # Empty list by default
     transform_timeseries: Optional[Callable[[float], float]] = None # optional function if values need to be transformed for timeseries representation
+    transform_trend: Optional[Callable[[float], float]] = None # optional function if values need to be transformed for trend representation
     def as_dict(self) -> dict:
         data = asdict(self)
         data.pop("transform_timeseries",None)
+        data.pop("transform_trend",None)
         return data

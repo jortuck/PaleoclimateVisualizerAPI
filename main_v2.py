@@ -208,5 +208,40 @@ async def get_variable_timeseries_area(
         }
     raise  HTTPException(status_code=404, detail="Variable not found.")
 
+@app.get("/variables/{id}/trend/{dataset_id}")
+def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None):
+    if variables.keys().__contains__(id):
+        variable = variables[id]
+        if variable.datasets.__contains__(dataset_id):
+            dataset = datasets[dataset_id]
+            data = xr.open_dataset(dataset.variables[id]+".zarr",engine="zarr").squeeze()
+            column = get_first_key(data.keys())
+            if startYear is not None and endYear is not None:
+                if startYear >= endYear:
+                    raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
+            else:
+                startYear = dataset.timeStart
+                endYear = dataset.timeEnd
+            data = data.sel(time=slice(startYear, endYear),drop=True)
+            trends = data.polyfit(dim='time', deg=1)
+            slope = trends.sel(
+                degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
+            slope['value'] = np.around(slope['value'], 6)
+            if variable.transform_trend:
+                slope['value'] = variable.transform_trend(slope['value'])
+            df = slope.to_dataframe().reset_index().drop(columns=['degree']);
+            df["lon"] = (df["lon"] + 180) % 360 - 180
+            bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
+            return {"min": -bound,
+                    "max": bound,
+                    "variable":variable.trendUnit,
+                    "name": dataset.nameShort + f' Reconstruction Trend {startYear}-{endYear}',
+                    "colorMap": generate_color_axis(variable.colorMap),
+                    "lats": list(df['lat']),
+                    "lons": list(df['lon']),
+                    "values": list(df['value'])}
+
+        raise  HTTPException(status_code=404, detail="Dataset not found.")
+    raise  HTTPException(status_code=404, detail="Variable not found.")
 handler = Mangum(app=app)
 # docker build -t pvapi -f AWS.dockerfile .

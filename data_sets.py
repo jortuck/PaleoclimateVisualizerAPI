@@ -21,6 +21,7 @@ variables: Dict[str, VariableMetadata] = {
         nameShort="U10",
         colorMap="PuOr_r",
         multiplier=100,
+        transform_trend= lambda value: value * 100,
         trendUnit="m/s/century",
         annualUnit="m/s",
 
@@ -31,6 +32,8 @@ variables: Dict[str, VariableMetadata] = {
         nameShort="V10",
         colorMap="BrBG_r",
         multiplier=100,
+        transform_trend= lambda value: value * 100,
+
         trendUnit="m/s/century",
         annualUnit="m/s"
     ),
@@ -40,6 +43,8 @@ variables: Dict[str, VariableMetadata] = {
         nameShort="TAS",
         colorMap="PiYG_r",
         multiplier=100,
+        transform_trend= lambda value: value * 100,
+
         trendUnit="K/century",
         annualUnit="K"
     ),
