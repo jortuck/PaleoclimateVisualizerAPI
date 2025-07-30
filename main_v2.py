@@ -91,6 +91,8 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
 
         # select time range if specified
         if startYear is not None and endYear is not None:
+            if startYear >= endYear:
+                raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
             instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
 
         instrumental_variable = get_first_key(instrumental_data.keys())
