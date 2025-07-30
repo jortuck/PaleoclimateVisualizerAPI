@@ -134,5 +134,79 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
         }
     raise  HTTPException(status_code=404, detail="Variable not found.")
 
+
+@app.get("/variables/{id}/timeseries-area")
+async def get_variable_timeseries_area(
+        id: str, startYear:int = None, endYear:int = None,
+        n: Annotated[int, Query(le=90, ge=-90)]  = -60, s: Annotated[int, Query(le=90, ge=-90)]  = -80,
+        start: Annotated[int, Query(le=180, ge=-180)] = 170, stop: Annotated[int, Query(le=180, ge=-180)] = -62,
+        download: bool = False):
+    if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
+        lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
+
+        start = to_degrees_east(start)
+        stop = to_degrees_east(stop)
+
+        if start < stop:
+            lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
+        elif start == stop:
+            lons = np.array([start])
+        else:
+            lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
+
+
+        variable = variables[id]
+        result = []
+
+        # TO-DO: make work for rare cases where there is no instrumental data for variable
+        instrumental_data = xr.open_dataset(instrumental.variables[id]+".zarr", engine="zarr")
+        lat_condition = instrumental_data['lat'].isin(lats)
+        lon_condition = instrumental_data['lon'].isin(lons)
+        instrumental_data = instrumental_data.sel(lat=lats, lon=lons, method="nearest")
+
+        # select time range if specified
+        if startYear is not None and endYear is not None:
+            if startYear >= endYear:
+                raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
+            instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
+
+        instrumental_variable = get_first_key(instrumental_data.keys())
+        instrumental_data = instrumental_data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
+        instrumental_data[instrumental_variable] = instrumental_data[instrumental_variable] - np.mean(instrumental_data[instrumental_variable])
+
+        if variable.transform_timeseries:
+            instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
+
+        result.append({
+            "name": instrumental.name,
+            "dashStyle": 'Dash',
+            "data": instrumental_data.values.tolist(),
+        })
+
+        for dataset in variable.datasets:
+            dataset = datasets[dataset]
+            reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
+
+            if startYear is not None and endYear is not None:
+                reconstruction = reconstruction.sel(time=slice(startYear, endYear))
+
+            dataset_var = get_first_key(reconstruction.keys())
+            reconstruction = reconstruction.where(lat_condition & lon_condition, drop=True)
+            reconstruction = reconstruction.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
+            reconstruction = reconstruction[['time', dataset_var]]
+
+            if variable.transform_timeseries:
+                reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
+
+            result.append({
+                "name": dataset.name,
+                "data": reconstruction.values.tolist(),
+            })
+        return {
+            "name": f'Time Series For Area ({n},{s},{start},{stop})',
+            "values": result
+        }
+    raise  HTTPException(status_code=404, detail="Variable not found.")
+
 handler = Mangum(app=app)
 # docker build -t pvapi -f AWS.dockerfile .

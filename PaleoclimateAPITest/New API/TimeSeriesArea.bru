@@ -1,0 +1,22 @@
+meta {
+  name: TimeSeriesArea
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:8000/variables/psl/timeseries-area?n=-10&s=-20&start=-162&stop=172
+  body: none
+  auth: inherit
+}
+
+params:query {
+  n: -10
+  s: -20
+  start: -162
+  stop: 172
+}
+
+settings {
+  encodeUrl: true
+}
