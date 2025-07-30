@@ -53,7 +53,6 @@ class VariableMetadata:
     colorMap: str
     name: str
     nameShort: str
-    multiplier: float
     trendUnit: str
     annualUnit: str
     datasets: List[str] = field(default_factory=list)  # Empty list by default

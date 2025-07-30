@@ -10,7 +10,6 @@ variables: Dict[str, VariableMetadata] = {
         name="Mean Sea Level Pressure Anomaly",
         nameShort="SLP",
         colorMap="RdBu_r",
-        multiplier=1,
         trendUnit="hPa/century",
         annualUnit="hPa",
         transform_timeseries=lambda value: value / 100
@@ -20,7 +19,6 @@ variables: Dict[str, VariableMetadata] = {
         name="Near Surface Zonal Wind Speed Anomaly",
         nameShort="U10",
         colorMap="PuOr_r",
-        multiplier=100,
         transform_trend= lambda value: value * 100,
         trendUnit="m/s/century",
         annualUnit="m/s",
@@ -31,7 +29,6 @@ variables: Dict[str, VariableMetadata] = {
         name="Meridional Wind Speed Anomaly",
         nameShort="V10",
         colorMap="BrBG_r",
-        multiplier=100,
         transform_trend= lambda value: value * 100,
 
         trendUnit="m/s/century",
@@ -42,9 +39,7 @@ variables: Dict[str, VariableMetadata] = {
         name="Near Surface Air Temperature Anomaly",
         nameShort="TAS",
         colorMap="PiYG_r",
-        multiplier=100,
         transform_trend= lambda value: value * 100,
-
         trendUnit="K/century",
         annualUnit="K"
     ),
