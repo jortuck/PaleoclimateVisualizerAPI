@@ -10,7 +10,6 @@ from data import instrumental
 from data_sets import variables, datasets, instrumental
 from mangum import Mangum
 import xarray as xr
-from scipy.stats import pearsonr
 from download import DownloadMode, TimeseriesDownload, netCDF_download, dataframe_download
 
 app = FastAPI()
@@ -265,8 +264,8 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
             df = slope.to_dataframe().reset_index().drop(columns=['degree']);
             df["lon"] = (df["lon"] + 180) % 360 - 180
             bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
-            return {"min": -bound,
-                    "max": bound,
+            return {
+                    "bound": bound,
                     "variable":variable.trendUnit,
                     "name": dataset.nameShort + f' Reconstruction Trend {startYear}-{endYear}',
                     "colorMap": generate_color_axis(variable.colorMap),

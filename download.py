@@ -3,6 +3,9 @@ import xarray as xr
 import tempfile
 from fastapi.responses import FileResponse
 import pandas as pd
+from scipy.io import savemat
+
+
 class DownloadMode(str, Enum):
     trend = "trend"
     full = "full"
