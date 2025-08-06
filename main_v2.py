@@ -1,8 +1,8 @@
-import time
 
 from fastapi import FastAPI, HTTPException, Request, Response, Query, Path
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
+
 import numpy as np
 from scipy.stats import pearsonr
 from util import abs_floor_minimum, to_degrees_east, generate_color_axis, get_first_key
@@ -11,6 +11,7 @@ from data_sets import variables, datasets, instrumental
 from mangum import Mangum
 import xarray as xr
 from scipy.stats import pearsonr
+from download import DownloadMode, TimeseriesDownload, netCDF_download, dataframe_download
 
 app = FastAPI()
 # add origins for cors
@@ -79,12 +80,11 @@ async def get_variables(id: str):
 
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
-async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download: bool = False):
+async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download:TimeseriesDownload = None):
     if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
         lon = to_degrees_east(lon)
         variable = variables[id]
         result = []
-
         # TO-DO: make work for rare cases where there is no instrumental data for variable
         instrumental_data = xr.open_dataset(instrumental.variables[id]+".zarr", engine="zarr")
         instrumental_data = instrumental_data.sel(lat=lat, lon=lon, method="nearest")
@@ -103,12 +103,16 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
         if variable.transform_timeseries:
             instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
 
-        result.append({
-            "name": instrumental.name,
-            "dashStyle": 'Dash',
-            "data": instrumental_data.values.tolist(),
-        })
-
+        if download:
+            download_frame = instrumental_data
+            download_frame.rename(columns={instrumental_variable: f'ERA5_{instrumental_variable}'}, inplace=True)
+            download_frame["time"] = download_frame["time"].astype(int)
+        else:
+            result.append({
+                "name": instrumental.name,
+                "dashStyle": 'Dash',
+                "data": instrumental_data.values.tolist(),
+            })
         for dataset in variable.datasets:
             dataset = datasets[dataset]
             reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
@@ -124,10 +128,18 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
             if variable.transform_timeseries:
                 reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
 
-            result.append({
-                "name": dataset.name,
-                "data": reconstruction.values.tolist(),
-            })
+            reconstruction.rename(columns={dataset_var: f'{dataset.nameShort}_{dataset_var}'.replace(" ","_")}, inplace=True)
+
+            if download:
+                download_frame = download_frame.merge(reconstruction,how="outer",on="time")
+            else:
+                result.append({
+                    "name": dataset.name,
+                    "data": reconstruction.values.tolist(),
+                })
+
+        if download:
+            return dataframe_download(download_frame,download,f'timeseries_{startYear}_{endYear}_{variable.name}_{variable.annualUnit}')
         return {
             "name": f'Time Series For ({lat},{(lon + 180) % 360 - 180})',
             "values": result
@@ -208,8 +220,11 @@ async def get_variable_timeseries_area(
         }
     raise  HTTPException(status_code=404, detail="Variable not found.")
 
+
+
+
 @app.get("/variables/{id}/trend/{dataset_id}")
-def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None):
+def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None, download:DownloadMode = None):
     if variables.keys().__contains__(id):
         variable = variables[id]
         if variable.datasets.__contains__(dataset_id):
@@ -222,13 +237,31 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
             else:
                 startYear = dataset.timeStart
                 endYear = dataset.timeEnd
+
+            # if they want full dataset, download before trim
+            if download == DownloadMode.full:
+                name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}'
+                return netCDF_download(data,name)
+
             data = data.sel(time=slice(startYear, endYear),drop=True)
+
+            if download == DownloadMode.partial:
+                name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}'
+                return netCDF_download(data,name)
+
             trends = data.polyfit(dim='time', deg=1)
             slope = trends.sel(
                 degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
             slope['value'] = np.around(slope['value'], 6)
             if variable.transform_trend:
                 slope['value'] = variable.transform_trend(slope['value'])
+
+            # if the user wants to download the calculated trend
+            if download == DownloadMode.trend:
+                name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}_trends'
+                return netCDF_download(trends.sel(
+                    degree=1).drop("degree"),name)
+
             df = slope.to_dataframe().reset_index().drop(columns=['degree']);
             df["lon"] = (df["lon"] + 180) % 360 - 180
             bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
