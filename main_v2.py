@@ -12,7 +12,7 @@ from mangum import Mangum
 import xarray as xr
 from download import DownloadMode, TimeseriesDownload, netCDF_download, dataframe_download
 
-app = FastAPI()
+app = FastAPI(openapi_url=None)
 # add origins for cors
 origins = [
     "http://localhost:5173",
