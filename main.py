@@ -236,4 +236,3 @@ async def timeSeriesArea(variable: str, n: int, s: int, start: int, stop: int, t
 
 
 handler = Mangum(app=app)
-# docker build -t pvapi -f AWS.dockerfile .
