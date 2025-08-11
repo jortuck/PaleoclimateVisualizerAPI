@@ -5,9 +5,14 @@ meta {
 }
 
 get {
-  url: http://localhost:8000/variables/psl/trend/cesm
+  url: http://localhost:8000/variables/psl/trend/cesm?startYear=1890&endYear=2005
   body: none
   auth: inherit
+}
+
+params:query {
+  startYear: 1890
+  endYear: 2005
 }
 
 settings {

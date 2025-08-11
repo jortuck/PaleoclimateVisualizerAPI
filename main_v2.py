@@ -69,14 +69,6 @@ async def get_variables():
         "datasets":list(datasets.values()),
     }
 
-# Get a specific variable and available datasets for that variable.
-@app.get("/variables/{id}")
-async def get_variables(id: str):
-    if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
-        return variables[id]
-    raise  HTTPException(status_code=404, detail="Variable not found.")
-
-
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
 async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download:TimeseriesDownload = None):
@@ -115,25 +107,39 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
         for dataset in variable.datasets:
             dataset = datasets[dataset]
             reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
+            reconstruction = reconstruction.sel(lat=lat,lon=lon,method="nearest")
 
-            if startYear is not None and endYear is not None:
-                reconstruction = reconstruction.sel(time=slice(startYear, endYear))
+            # move anomaly reference to 1979-2005
+            reconstruction_subset = reconstruction.sel(time=slice(1979, 2005))
+            climatology = reconstruction_subset.mean(dim='time')
+            reconstruction = reconstruction - climatology
 
             dataset_var = get_first_key(reconstruction.keys())
-            reconstruction = reconstruction.sel(lat=lat,lon=lon,method="nearest")
+
             reconstruction = reconstruction.to_dataframe().reset_index()
             reconstruction = reconstruction[['time', dataset_var]]
+
+            merged_df = instrumental_data.merge(reconstruction, how='inner', on='time')
+            instrumental_aligned_values = merged_df.iloc[:, 1].values
+            reconstruction_aligned_values =  merged_df.iloc[:, 2].values
+            r, p_value = pearsonr(instrumental_aligned_values, reconstruction_aligned_values)
+            r = np.around(r, decimals=4)
+            p_value = np.around(p_value, decimals=4)
+
+
+            if startYear is not None and endYear is not None:
+                reconstruction = reconstruction[(reconstruction['time'] >= startYear) & (reconstruction['time'] <= endYear)]
 
             if variable.transform_timeseries:
                 reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
 
-            reconstruction.rename(columns={dataset_var: f'{dataset.nameShort}_{dataset_var}'.replace(" ","_")}, inplace=True)
 
             if download:
+                reconstruction.rename(columns={dataset_var: f'{dataset.nameShort}_{dataset_var}'.replace(" ","_")}, inplace=True)
                 download_frame = download_frame.merge(reconstruction,how="outer",on="time")
             else:
                 result.append({
-                    "name": dataset.name,
+                    "name": f'{dataset.name}, r={r}, p_value={p_value}',
                     "data": reconstruction.values.tolist(),
                 })
 
@@ -265,7 +271,7 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
             df["lon"] = (df["lon"] + 180) % 360 - 180
             bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
             return {
-                    "bound": bound,
+                    "bound": np.max([bound,1]).item(),
                     "variable":variable.trendUnit,
                     "name": dataset.nameShort + f' Reconstruction Trend {startYear}-{endYear}',
                     "colorMap": generate_color_axis(variable.colorMap),
