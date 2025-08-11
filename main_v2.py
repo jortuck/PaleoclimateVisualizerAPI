@@ -1,12 +1,12 @@
 
 from fastapi import FastAPI, HTTPException, Request, Response, Query, Path
-from typing import Annotated
+from typing import Annotated, Callable
 from fastapi.middleware.cors import CORSMiddleware
 
 import numpy as np
 from scipy.stats import pearsonr
 from util import abs_floor_minimum, to_degrees_east, generate_color_axis, get_first_key
-from data import instrumental
+from data_v2 import VariableMetadata
 from data_sets import variables, datasets, instrumental
 from mangum import Mangum
 import xarray as xr
@@ -72,53 +72,90 @@ async def get_variables():
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
 async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download:TimeseriesDownload = None):
-    if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
+    if variables.keys().__contains__(id):
         lon = to_degrees_east(lon)
-        variable = variables[id]
-        result = []
-        # TO-DO: make work for rare cases where there is no instrumental data for variable
-        instrumental_data = xr.open_dataset(instrumental.variables[id]+".zarr", engine="zarr")
-        instrumental_data = instrumental_data.sel(lat=lat, lon=lon, method="nearest")
+        def select_point(xarray_dataset :xr.Dataset) -> xr.Dataset:
+                return xarray_dataset.sel(lat=lat, lon=lon, method="nearest")
+        return processTimeSeries(select_point,variables[id],f'({lat},{(lon + 180) % 360 - 180})',startYear,endYear,download)
+    raise  HTTPException(status_code=404, detail="Variable not found.")
 
-        # select time range if specified
-        if startYear is not None and endYear is not None:
-            if startYear >= endYear:
-                raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
-            instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
-
-        instrumental_variable = get_first_key(instrumental_data.keys())
-        instrumental_data = instrumental_data.to_dataframe().reset_index()
-        instrumental_data = instrumental_data.drop(columns=['lat', 'lon'])
-        instrumental_data[instrumental_variable] = instrumental_data[instrumental_variable] - np.mean(instrumental_data[instrumental_variable])
-
-        if variable.transform_timeseries:
-            instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
-
-        if download:
-            download_frame = instrumental_data
-            download_frame.rename(columns={instrumental_variable: f'ERA5_{instrumental_variable}'}, inplace=True)
-            download_frame["time"] = download_frame["time"].astype(int)
+@app.get("/variables/{id}/timeseries-area")
+async def get_variable_timeseries_area(
+        id: str, startYear:int = None, endYear:int = None,
+        n: Annotated[int, Query(le=90, ge=-90)]  = -60, s: Annotated[int, Query(le=90, ge=-90)]  = -80,
+        start: Annotated[int, Query(le=180, ge=-180)] = 170, stop: Annotated[int, Query(le=180, ge=-180)] = -62,
+        download:TimeseriesDownload = None):
+    if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
+        lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
+        start = to_degrees_east(start)
+        stop = to_degrees_east(stop)
+        if start < stop:
+            lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
+        elif start == stop:
+            lons = np.array([start])
         else:
-            result.append({
-                "name": instrumental.name,
-                "dashStyle": 'Dash',
-                "data": instrumental_data.values.tolist(),
-            })
-        for dataset in variable.datasets:
-            dataset = datasets[dataset]
-            reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
-            reconstruction = reconstruction.sel(lat=lat,lon=lon,method="nearest")
+            lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
+        variable = variables[id]
 
-            # move anomaly reference to 1979-2005
-            reconstruction_subset = reconstruction.sel(time=slice(1979, 2005))
-            climatology = reconstruction_subset.mean(dim='time')
-            reconstruction = reconstruction - climatology
+        def select_area(xarray_dataset :xr.Dataset) -> xr.Dataset:
+            print(xarray_dataset)
+            return xarray_dataset.sel(lat=lats, lon=lons, method="nearest").mean(dim=['lat', 'lon'])
 
-            dataset_var = get_first_key(reconstruction.keys())
+        return processTimeSeries(select_area,variable,f'({n},{s},{start},{stop})',startYear=startYear,endYear=endYear,download=download)
+    raise  HTTPException(status_code=404, detail="Variable not found.")
 
-            reconstruction = reconstruction.to_dataframe().reset_index()
-            reconstruction = reconstruction[['time', dataset_var]]
+def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:VariableMetadata, area_name:str, startYear:int = None, endYear:int = None, download:TimeseriesDownload = None):
+     # makes sure the user request a valid variable, else returns 404
+    result = []
+    # TO-DO: make work for rare cases where there is no instrumental data for variable
+    instrumental_data = xr.open_dataset(instrumental.variables[variable.id]+".zarr", engine="zarr")
+    instrumental_data = selectArea(instrumental_data)
 
+    # select time range if specified
+    if startYear is not None and endYear is not None:
+        if startYear >= endYear:
+            raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
+        instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
+
+    instrumental_variable = get_first_key(instrumental_data.keys())
+    instrumental_data = instrumental_data.to_dataframe().reset_index()
+    try:
+        instrumental_data = instrumental_data.drop(columns=['lat', 'lon'])
+    except KeyError:
+        pass
+
+    instrumental_data[instrumental_variable] = instrumental_data[instrumental_variable] - np.mean(instrumental_data[instrumental_variable])
+
+    if variable.transform_timeseries:
+        instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
+
+    if download:
+        download_frame = instrumental_data
+        download_frame.rename(columns={instrumental_variable: f'ERA5_{instrumental_variable}'}, inplace=True)
+        download_frame["time"] = download_frame["time"].astype(int)
+    else:
+        result.append({
+            "name": instrumental.name,
+            "dashStyle": 'Dash',
+            "data": instrumental_data.values.tolist(),
+        })
+    for dataset in variable.datasets:
+        dataset = datasets[dataset]
+        reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
+        reconstruction = selectArea(reconstruction)
+
+        # move anomaly reference to 1979-2005
+        reconstruction_subset = reconstruction.sel(time=slice(1979, 2005))
+        climatology = reconstruction_subset.mean(dim='time')
+        reconstruction = reconstruction - climatology
+
+        dataset_var = get_first_key(reconstruction.keys())
+
+        reconstruction = reconstruction.to_dataframe().reset_index()
+        reconstruction = reconstruction[['time', dataset_var]]
+
+        r, p_value = [None,None]
+        if download is None:
             merged_df = instrumental_data.merge(reconstruction, how='inner', on='time')
             instrumental_aligned_values = merged_df.iloc[:, 1].values
             reconstruction_aligned_values =  merged_df.iloc[:, 2].values
@@ -127,106 +164,28 @@ async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = N
             p_value = np.around(p_value, decimals=4)
 
 
-            if startYear is not None and endYear is not None:
-                reconstruction = reconstruction[(reconstruction['time'] >= startYear) & (reconstruction['time'] <= endYear)]
-
-            if variable.transform_timeseries:
-                reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
-
-
-            if download:
-                reconstruction.rename(columns={dataset_var: f'{dataset.nameShort}_{dataset_var}'.replace(" ","_")}, inplace=True)
-                download_frame = download_frame.merge(reconstruction,how="outer",on="time")
-            else:
-                result.append({
-                    "name": f'{dataset.name}, r={r}, p_value={p_value}',
-                    "data": reconstruction.values.tolist(),
-                })
-
-        if download:
-            return dataframe_download(download_frame,download,f'timeseries_{startYear}_{endYear}_{variable.name}_{variable.annualUnit}')
-        return {
-            "name": f'Time Series For ({lat},{(lon + 180) % 360 - 180})',
-            "values": result
-        }
-    raise  HTTPException(status_code=404, detail="Variable not found.")
-
-
-@app.get("/variables/{id}/timeseries-area")
-async def get_variable_timeseries_area(
-        id: str, startYear:int = None, endYear:int = None,
-        n: Annotated[int, Query(le=90, ge=-90)]  = -60, s: Annotated[int, Query(le=90, ge=-90)]  = -80,
-        start: Annotated[int, Query(le=180, ge=-180)] = 170, stop: Annotated[int, Query(le=180, ge=-180)] = -62,
-        download: bool = False):
-    if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
-        lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
-
-        start = to_degrees_east(start)
-        stop = to_degrees_east(stop)
-
-        if start < stop:
-            lons = np.arange(np.min([start, stop]), np.max([start, stop]) + 1)
-        elif start == stop:
-            lons = np.array([start])
-        else:
-            lons = np.concatenate((np.arange(start, 361), np.arange(0, stop + 1)))
-
-
-        variable = variables[id]
-        result = []
-
-        # TO-DO: make work for rare cases where there is no instrumental data for variable
-        instrumental_data = xr.open_dataset(instrumental.variables[id]+".zarr", engine="zarr")
-        lat_condition = instrumental_data['lat'].isin(lats)
-        lon_condition = instrumental_data['lon'].isin(lons)
-        instrumental_data = instrumental_data.sel(lat=lats, lon=lons, method="nearest")
-
-        # select time range if specified
         if startYear is not None and endYear is not None:
-            if startYear >= endYear:
-                raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
-            instrumental_data = instrumental_data.sel(time=slice(startYear, endYear))
-
-        instrumental_variable = get_first_key(instrumental_data.keys())
-        instrumental_data = instrumental_data.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
-        instrumental_data[instrumental_variable] = instrumental_data[instrumental_variable] - np.mean(instrumental_data[instrumental_variable])
+            reconstruction = reconstruction[(reconstruction['time'] >= startYear) & (reconstruction['time'] <= endYear)]
 
         if variable.transform_timeseries:
-            instrumental_data[instrumental_variable] = variable.transform_timeseries(instrumental_data[instrumental_variable])
+            reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
 
-        result.append({
-            "name": instrumental.name,
-            "dashStyle": 'Dash',
-            "data": instrumental_data.values.tolist(),
-        })
 
-        for dataset in variable.datasets:
-            dataset = datasets[dataset]
-            reconstruction = xr.open_dataset(dataset.variables[variable.id]+".zarr", engine="zarr")
-
-            if startYear is not None and endYear is not None:
-                reconstruction = reconstruction.sel(time=slice(startYear, endYear))
-
-            dataset_var = get_first_key(reconstruction.keys())
-            reconstruction = reconstruction.where(lat_condition & lon_condition, drop=True)
-            reconstruction = reconstruction.groupby('time').mean(dim=["lat","lon"]).to_dataframe().reset_index()
-            reconstruction = reconstruction[['time', dataset_var]]
-
-            if variable.transform_timeseries:
-                reconstruction[dataset_var] = variable.transform_timeseries(reconstruction[dataset_var])
-
+        if download:
+            reconstruction.rename(columns={dataset_var: f'{dataset.nameShort}_{dataset_var}'.replace(" ","_")}, inplace=True)
+            download_frame = download_frame.merge(reconstruction,how="outer",on="time")
+        else:
             result.append({
-                "name": dataset.name,
+                "name": f'{dataset.name}, r={r}, p_value={p_value}',
                 "data": reconstruction.values.tolist(),
             })
-        return {
-            "name": f'Time Series For Area ({n},{s},{start},{stop})',
-            "values": result
-        }
-    raise  HTTPException(status_code=404, detail="Variable not found.")
 
-
-
+    if download:
+        return dataframe_download(download_frame,download,f'timeseries_{startYear}_{endYear}_{variable.name}_{variable.annualUnit}_{area_name}')
+    return {
+        "name": f'Time Series For {area_name}',
+        "values": result
+    }
 
 @app.get("/variables/{id}/trend/{dataset_id}")
 def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None, download:DownloadMode = None):
