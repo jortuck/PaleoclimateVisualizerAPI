@@ -71,12 +71,12 @@ async def get_variables():
 
 # get time series data for a specific lat/lon point
 @app.get("/variables/{id}/timeseries")
-async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download:TimeseriesDownload = None):
+async def get_variable_timeseries(id: str, startYear:int = None, endYear:int = None, lat: Annotated[int, Query(le=90, ge=-90)]  = 0, lon: Annotated[int, Query(le=180, ge=-180)] = -150, download:TimeseriesDownload = None, move_reference:bool = True):
     if variables.keys().__contains__(id):
         lon = to_degrees_east(lon)
         def select_point(xarray_dataset :xr.Dataset) -> xr.Dataset:
                 return xarray_dataset.sel(lat=lat, lon=lon, method="nearest")
-        return processTimeSeries(select_point,variables[id],f'({lat},{(lon + 180) % 360 - 180})',startYear,endYear,download)
+        return processTimeSeries(select_point,variables[id],f'({lat},{(lon + 180) % 360 - 180})',startYear,endYear,download, move_reference=move_reference)
     raise  HTTPException(status_code=404, detail="Variable not found.")
 
 @app.get("/variables/{id}/timeseries-area")
@@ -84,7 +84,7 @@ async def get_variable_timeseries_area(
         id: str, startYear:int = None, endYear:int = None,
         n: Annotated[int, Query(le=90, ge=-90)]  = -60, s: Annotated[int, Query(le=90, ge=-90)]  = -80,
         start: Annotated[int, Query(le=180, ge=-180)] = 170, stop: Annotated[int, Query(le=180, ge=-180)] = -62,
-        download:TimeseriesDownload = None):
+        download:TimeseriesDownload = None, move_reference:bool = True):
     if variables.keys().__contains__(id): # makes sure the user request a valid variable, else returns 404
         lats = np.arange(np.min([n, s]), np.max([n, s]) + 1)
         start = to_degrees_east(start)
@@ -100,11 +100,10 @@ async def get_variable_timeseries_area(
         def select_area(xarray_dataset :xr.Dataset) -> xr.Dataset:
             print(xarray_dataset)
             return xarray_dataset.sel(lat=lats, lon=lons, method="nearest").mean(dim=['lat', 'lon'])
-
-        return processTimeSeries(select_area,variable,f'({n},{s},{start},{stop})',startYear=startYear,endYear=endYear,download=download)
+        return processTimeSeries(select_area,variable,f'({n},{s},{start},{stop})',startYear=startYear,endYear=endYear,download=download, move_reference=move_reference)
     raise  HTTPException(status_code=404, detail="Variable not found.")
 
-def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:VariableMetadata, area_name:str, startYear:int = None, endYear:int = None, download:TimeseriesDownload = None):
+def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:VariableMetadata, area_name:str, startYear:int = None, endYear:int = None, download:TimeseriesDownload = None, move_reference:bool = True):
      # makes sure the user request a valid variable, else returns 404
     result = []
     # TO-DO: make work for rare cases where there is no instrumental data for variable
@@ -145,9 +144,10 @@ def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:V
         reconstruction = selectArea(reconstruction)
 
         # move anomaly reference to 1979-2005
-        reconstruction_subset = reconstruction.sel(time=slice(1979, 2005))
-        climatology = reconstruction_subset.mean(dim='time')
-        reconstruction = reconstruction - climatology
+        if move_reference:
+            reconstruction_subset = reconstruction.sel(time=slice(1979, 2005))
+            climatology = reconstruction_subset.mean(dim='time')
+            reconstruction = reconstruction - climatology
 
         dataset_var = get_first_key(reconstruction.keys())
 
@@ -188,12 +188,17 @@ def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:V
     }
 
 @app.get("/variables/{id}/trend/{dataset_id}")
-def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None, download:DownloadMode = None):
+def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int = None, endYear:int = None, download:DownloadMode = None, move_reference:bool = False):
     if variables.keys().__contains__(id):
         variable = variables[id]
         if variable.datasets.__contains__(dataset_id):
             dataset = datasets[dataset_id]
             data = xr.open_dataset(dataset.variables[id]+".zarr",engine="zarr").squeeze()
+            if move_reference:
+                data_subset = data.sel(time=slice(1979, 2005))
+                climatology = data_subset.mean(dim='time')
+                data = data - climatology
+
             column = get_first_key(data.keys())
             if startYear is not None and endYear is not None:
                 if startYear >= endYear:
