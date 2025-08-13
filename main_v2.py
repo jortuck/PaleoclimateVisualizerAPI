@@ -162,7 +162,8 @@ def processTimeSeries(selectArea: Callable[[xr.Dataset], xr.Dataset], variable:V
             r, p_value = pearsonr(instrumental_aligned_values, reconstruction_aligned_values)
             r = np.around(r, decimals=4)
             p_value = np.around(p_value, decimals=4)
-
+            if p_value == 0.0:
+                p_value = "0.0000"
 
         if startYear is not None and endYear is not None:
             reconstruction = reconstruction[(reconstruction['time'] >= startYear) & (reconstruction['time'] <= endYear)]
