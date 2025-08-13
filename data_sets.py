@@ -1,7 +1,7 @@
 # data sets for the backend are defined and described here
 from typing import Dict
 
-from data_v2 import VariableMetadata, Dataset, DatasetType
+from data import VariableMetadata, Dataset, DatasetType
 
 # variables
 variables: Dict[str, VariableMetadata] = {
