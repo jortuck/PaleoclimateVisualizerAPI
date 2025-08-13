@@ -201,7 +201,7 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
 
             column = get_first_key(data.keys())
             if startYear is not None and endYear is not None:
-                if startYear >= endYear:
+                if startYear > endYear:
                     raise  HTTPException(status_code=400, detail="Start year cannot be greater than or equal to end year.")
             else:
                 startYear = dataset.timeStart
@@ -218,26 +218,32 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
                 name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}'
                 return netCDF_download(data,name)
 
-            trends = data.polyfit(dim='time', deg=1)
-            slope = trends.sel(
-                degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
-            slope['value'] = np.around(slope['value'], 6)
-            if variable.transform_trend:
-                slope['value'] = variable.transform_trend(slope['value'])
+            if startYear != endYear:
+                trends = data.polyfit(dim='time', deg=1)
+                slope = trends.sel(
+                    degree=1).rename_vars({column+"_polyfit_coefficients":"value"})
+                slope['value'] = np.around(slope['value'], 6)
+                if variable.transform_trend:
+                    slope['value'] = variable.transform_trend(slope['value'])
 
-            # if the user wants to download the calculated trend
-            if download == DownloadMode.trend:
-                name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}_trends'
-                return netCDF_download(trends.sel(
-                    degree=1).drop("degree"),name)
+                # if the user wants to download the calculated trend
+                if download == DownloadMode.trend:
+                    name = f'{startYear}_{endYear}_{dataset.name}_{variable.name}_trends'
+                    return netCDF_download(trends.sel(
+                        degree=1).drop("degree"),name)
+                df = slope.to_dataframe().reset_index().drop(columns=['degree'])
+            else:
+                df = data.to_dataframe().reset_index().drop(columns=['time'])
+                df.rename(columns={column: 'value'}, inplace=True)
+                if variable.transform_timeseries:
+                    df["value"] = variable.transform_timeseries(df["value"])
 
-            df = slope.to_dataframe().reset_index().drop(columns=['degree']);
             df["lon"] = (df["lon"] + 180) % 360 - 180
             bound = abs_floor_minimum(np.min(df["value"]), np.max(df["value"]))
             return {
                     "bound": np.max([bound,1]).item(),
-                    "variable":variable.trendUnit,
-                    "name": dataset.nameShort + f' Reconstruction Trend {startYear}-{endYear}',
+                    "variable": variable.trendUnit if startYear != endYear else variable.annualUnit,
+                    "name": dataset.nameShort + f' Reconstruction '+(f'Trend {startYear}-{endYear}' if startYear != endYear else f'{startYear}'),
                     "colorMap": generate_color_axis(variable.colorMap),
                     "lats": list(df['lat']),
                     "lons": list(df['lon']),
