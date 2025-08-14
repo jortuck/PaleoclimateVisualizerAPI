@@ -1,6 +1,7 @@
 FROM google/cloud-sdk:latest AS gcloud-cli
 WORKDIR /data-downloader
 # The Cloud Build service account is automatically authenticated here
+RUN gcloud projects get-iam-policy your-project-id --flatten="bindings[].members" --format='table(bindings.role)' --filter="bindings.members:cloudbuild.gserviceaccount.com"
 RUN gsutil -m cp -r gs://pvapi/data /data-downloader/data
 FROM python:3.13
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
