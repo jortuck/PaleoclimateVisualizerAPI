@@ -24,7 +24,6 @@ FROM --platform=linux/amd64 scratch AS data_stage
 COPY ./data /data
 
 
-COPY ./data /data
  # lambda image
 FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.13
 
@@ -36,6 +35,8 @@ COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
 COPY ./main.py ./
 COPY ./util.py ./
 COPY ./data.py ./
+COPY ./data_sets.py ./
+COPY ./download.py ./
 
 COPY --from=data_stage /data ./data
 
