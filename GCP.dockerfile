@@ -9,6 +9,5 @@ COPY ./data.py /code/
 COPY ./data_sets.py /code/
 COPY ./download.py /code/
 COPY ./data /code/data
-RUN ls /code/data
 EXPOSE 80
-CMD ["uv","run","fastapi", "run", "main.py", "--port", "80", "--proxy-headers"]
+CMD ["uv","run","fastapi", "run", "main.py",  "--port", "$PORT", "--proxy-headers"]
