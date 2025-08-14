@@ -1,8 +1,3 @@
-FROM google/cloud-sdk:latest AS gcloud-cli
-WORKDIR /data-downloader
-# The Cloud Build service account is automatically authenticated here
-RUN gcloud auth list
-RUN gsutil -m cp -r gs://pvapi/data /data-downloader/data
 FROM python:3.13
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /code
@@ -13,6 +8,6 @@ COPY ./util.py /code/
 COPY ./data.py /code/
 COPY ./data_sets.py /code/
 COPY ./download.py /code/
-COPY --from=gcloud-cli /data-downloader/data /code/data
+COPY ./data-downloader/data /code/data
 EXPOSE 80
 CMD ["uv","run","fastapi", "run", "main.py", "--port", "80", "--proxy-headers"]
