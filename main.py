@@ -8,7 +8,6 @@ from scipy.stats import pearsonr
 from util import abs_floor_minimum, to_degrees_east, generate_color_axis, get_first_key
 from data import VariableMetadata
 from data_sets import variables, datasets, instrumental
-from mangum import Mangum
 import xarray as xr
 from download import DownloadMode, TimeseriesDownload, netCDF_download, dataframe_download
 
@@ -252,5 +251,4 @@ def calculateTrend(id: str, dataset_id: str, response: Response, startYear:int =
 
         raise  HTTPException(status_code=404, detail="Dataset not found.")
     raise  HTTPException(status_code=404, detail="Variable not found.")
-handler = Mangum(app=app)
 # docker build -t pvapi -f AWS.dockerfile .
