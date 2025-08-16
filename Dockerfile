@@ -1,43 +1,13 @@
-#  Build deps into the Lambda task root
-FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.13 AS builder
-
-# Bring in uv without installing Python tooling into the final image
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# Faster cold starts + deterministic layers
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_NO_INSTALLER_METADATA=1 \
-    UV_LINK_MODE=copy
-
-WORKDIR ${LAMBDA_TASK_ROOT}
-
-COPY ./pyproject.toml ./pyproject.toml
-
-COPY ./uv.lock ./uv.lock
-
-# Export pinned requirements and install them INTO the task root (no venv)
-RUN uv export --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
-    uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
-
-
-FROM --platform=linux/amd64 scratch AS data_stage
-COPY ./data /data
-
-
- # lambda image
-FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.13
-
-WORKDIR ${LAMBDA_TASK_ROOT}
-
-# copy dependencies from builder layer
-COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
-
-COPY ./main.py ./
-COPY ./util.py ./
-COPY ./data.py ./
-COPY ./data_sets.py ./
-COPY ./download.py ./
-
-COPY --from=data_stage /data ./data
-
-CMD ["main.handler"]
+FROM python:3.13
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+WORKDIR /code
+COPY ./pyproject.toml /code/pyproject.toml
+RUN uv sync --compile-bytecode
+COPY ./main.py /code/
+COPY ./util.py /code/
+COPY ./data.py /code/
+COPY ./data_sets.py /code/
+COPY ./download.py /code/
+COPY ./data /code/data
+EXPOSE 8080
+CMD ["uv","run","fastapi", "run", "main.py",  "--port", "8080", "--proxy-headers"]

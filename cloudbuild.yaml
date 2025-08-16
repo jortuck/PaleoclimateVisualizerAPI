@@ -1,0 +1,118 @@
+steps:
+  # 0) Pull data into ./data — fail if _DATA_BUCKET not set
+  - name: gcr.io/cloud-builders/gcloud
+    id: Pull data
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if [[ -z "${_DATA_BUCKET}" ]]; then
+          echo "ERROR: _DATA_BUCKET substitution is not set."
+          echo "Please set it in your Cloud Build trigger or substitutions."
+          exit 1
+        fi
+        gcloud storage cp --recursive "gs://${_DATA_BUCKET}/data" ./
+
+
+  # 1) Ensure Artifact Registry repo exists, and configure Docker auth
+  - name: gcr.io/cloud-builders/gcloud
+    id: Ensure AR repo
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        AR_HOST="${_AR_REGION}-docker.pkg.dev"
+
+        echo "Checking Artifact Registry repo '${_AR_REPO}' in region '${_AR_REGION}'..."
+        if ! gcloud artifacts repositories describe "${_AR_REPO}" --location="${_AR_REGION}" >/dev/null 2>&1; then
+          echo "Repo not found. Creating..."
+          gcloud artifacts repositories create "${_AR_REPO}" \
+            --repository-format=docker \
+            --location="${_AR_REGION}" \
+            --description="Container images for ${_SERVICE_NAME}"
+          echo "Repo created."
+        else
+          echo "Repo exists."
+        fi
+
+        echo "Configuring Docker auth for ${_AR_REGION}-docker.pkg.dev..."
+        gcloud auth configure-docker "${_AR_REGION}-docker.pkg.dev" --quiet
+
+        # Persist computed values for later steps
+
+  # 2) Build image
+  - name: gcr.io/cloud-builders/docker
+    id: Build
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        source /workspace/env.out
+        docker build \
+          --no-cache \
+          -t "${_AR_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_IMAGE}:${SHORT_SHA}" \
+          -f Dockerfile \
+          .
+
+  # 3) Push image
+  - name: gcr.io/cloud-builders/docker
+    id: Push
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        source /workspace/env.out
+        docker push "${_AR_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_IMAGE}:${SHORT_SHA}"
+
+  # 4) Deploy (create or update)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: Deploy
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud run deploy "${_SERVICE_NAME}" \
+          --platform=managed \
+          --image="${_AR_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_IMAGE}:${SHORT_SHA}" \
+          --region="${_DEPLOY_REGION}" \
+          --quiet \
+          --allow-unauthenticated \
+          --memory="${_MEMORY}" \
+          --cpu="${_CPU}" \
+          --max-instances="${_MAX_INSTANCES}" \
+          --min-instances="${_MIN_INSTANCES}" \
+          ${_ENV_VARS:+--set-env-vars="${_ENV_VARS}"}
+
+images:
+  # Optional; listing it here is fine and helps trace builds
+  - '${_AR_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_IMAGE}:${SHORT_SHA}'
+
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  # ---- Required ----
+  _SERVICE_NAME: paleoclimatevisualizerapi
+  _DEPLOY_REGION: us-west1
+  _AR_REGION: us-west1
+  _AR_REPO: pvapi
+  _IMAGE: paleoclimatevisualizerapi
+
+  # ---- Optional (safe defaults / empty = skip) ----
+  _DATA_BUCKET: ''                 # e.g., pvapi (no gs://)
+  _RUNTIME_SA: ''                  # e.g., run-sa@${PROJECT_ID}.iam.gserviceaccount.com
+  _ALLOW_UNAUTHENTICATED: '1'       # set to '1' to enable
+  _MEMORY: '1Gi'                      # e.g., 1Gi
+  _CPU: '1'                         # e.g., 1
+  _MAX_INSTANCES: '1'               # e.g., 3
+  _MIN_INSTANCES: '0'               # e.g., 0
+  _ENV_VARS: ''                    # e.g., KEY1=val1,KEY2=val2
+
+tags:
+  - cloud-build
+  - cloud-run
+  - paleoclimatevisualizerapi
