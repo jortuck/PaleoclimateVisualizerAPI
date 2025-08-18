@@ -10,6 +10,6 @@ services:
     restart: unless-stopped
     container_name: pvapi
     build:
-      dockerfile: "./VPS.dockerfile"
+      dockerfile: "./Dockerfile"
     ports:
-      - "8005:80"
+      - "8005:8080"
