@@ -1,0 +1,15 @@
+meta {
+  name: proxies
+  type: http
+  seq: 5
+}
+
+get {
+  url: http://127.0.0.1:8000/proxies
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

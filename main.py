@@ -10,7 +10,7 @@ from data import VariableMetadata
 from data_sets import variables, datasets, instrumental
 import xarray as xr
 from download import DownloadMode, TimeseriesDownload, netCDF_download, dataframe_download
-
+import pandas as pd
 app = FastAPI(openapi_url=None)
 # add origins for cors
 origins = [
@@ -52,6 +52,11 @@ async def cache(request: Request, call_next):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/proxies")
+async def proxies():
+    data = pd.read_pickle("proxies.pkl")
+    return data.to_dict(orient="records")
 
 # root shows possible data sets
 @app.get("/")
